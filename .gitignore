@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+data/*.jsonl
+.env
+.env.*
+!.env.example
+*.log
