@@ -15,3 +15,6 @@ data/*.jsonl
 .testmuai/evidence/
 kane-out/
 tests/kane/output-*/
+
+# Kane gate: raw run streams stay local; KANE_REPORT.md and .kane/last-report.json are committed evidence
+.kane/runs/

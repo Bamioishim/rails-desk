@@ -12,7 +12,13 @@
     "receipts:append": "node scripts/receipts.mjs append",
     "circuit": "node scripts/policy-circuit.mjs",
     "typecheck": "tsc --noEmit",
-    "test:kane": "bash scripts/run-kane-tests.sh"
+    "test:kane": "bash scripts/run-kane-tests.sh",
+    "kane:gate": "node scripts/kane-gate.mjs",
+    "kane:gate:ci": "node scripts/kane-gate.mjs --skip-if-no-creds",
+    "hooks:install": "git config core.hooksPath .githooks && echo 'Kane pre-push gate enabled (.githooks/pre-push)'",
+    "hooks:uninstall": "git config --unset core.hooksPath || true",
+    "predeploy": "node scripts/kane-gate.mjs",
+    "deploy": "vercel deploy --prod"
   },
   "dependencies": {
     "next": "16.4.6",
