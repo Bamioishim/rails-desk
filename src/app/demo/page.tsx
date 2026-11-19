@@ -27,10 +27,11 @@ export default function GuidedDemoPage(){
  const play=async()=>{
   const id=++runId.current;setAuto(true);setReceipt(null);setStage("typing");
   setRecipient("");setAmount("");setReason("");
-  await wait(450);if(id!==runId.current)return;setRecipient("Alex");
-  await wait(450);if(id!==runId.current)return;setAmount("12");
-  await wait(450);if(id!==runId.current)return;setReason("Monthly team expense reimbursement");
-  await wait(700);if(id!==runId.current)return;setStage("review");
+  for(let i=1;i<="Alex".length;i++){await wait(95);if(id!==runId.current)return;setRecipient("Alex".slice(0,i));}
+  for(let i=1;i<="12".length;i++){await wait(120);if(id!==runId.current)return;setAmount("12".slice(0,i));}
+  const demoReason="Monthly team expense reimbursement";
+  for(let i=1;i<=demoReason.length;i++){await wait(32);if(id!==runId.current)return;setReason(demoReason.slice(0,i));}
+  await wait(650);if(id!==runId.current)return;setStage("review");
   setNote("The referee checks the amount and exact recipient against the active policy. The reason is treated as untrusted data.");
   await wait(1400);if(id!==runId.current)return;setStage("approved");
   setNote("The proposal is within the demo rails. Approval is not execution: a separate explicit mock-execution step is required.");
