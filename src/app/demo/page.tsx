@@ -38,7 +38,13 @@ export default function GuidedDemoPage(){
   setNote("Demo complete. This illustrative receipt exists only in this page's memory and is not part of your real receipt chain.");
  };
  const takeControl=()=>{runId.current+=1;setAuto(false);setNote("Auto-play paused. You can edit the fields and use the controls yourself.");};
- const submit=()=>{setReceipt(null);setStage("review");setNote("Preview only: Alex is allowed and 12 is below the demo cap of 20. No transfer has occurred.");};
+ const submit=()=>{
+  const value=Number(amount);
+  if(!Number.isFinite(value)||value<=0){setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:"Amount must be greater than zero."});setNote("Blocked: the amount must be a positive number.");return;}
+  if(value>20){setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:"Amount exceeds the demo cap of 20 credits."});setNote("Blocked: this proposal exceeds the 20-credit spending cap.");return;}
+  if(!["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())){setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:"Recipient is not on the demo allowlist."});setNote("Blocked: this recipient is not on the allowed list.");return;}
+  setReceipt(null);setStage("review");setNote("Within the demo policy. The proposal is waiting for your explicit approval. No transfer has occurred.");
+ };
  const approve=()=>{setStage("approved");setNote("Approved in the walkthrough. This still does not execute anything.");};
  const execute=()=>{setReceipt({recipient,amount:Number(amount),decision:"Executed (mock)",reason:"Manually completed in the isolated demo."});setStage("complete");setNote("Recorded in this demo page only. No funds moved and no persistent receipt was written.");};
  const refuse=()=>{setStage("refused");setReceipt({recipient,amount:Number(amount),decision:"Refused",reason:"Manually refused in the isolated demo."});setNote("Refusal shown in the walkthrough only. Nothing was sent.");};
@@ -62,8 +68,8 @@ export default function GuidedDemoPage(){
    <aside className="panel">
     <div className="section-head"><div><h2 className="panel-title">Referee decision</h2><div className="panel-desc">Deterministic checks, not an agent's opinion.</div></div><span className={stage==="refused"?"tag red":"tag"}>{stage==="idle"||stage==="typing"?"WAITING":stage==="review"?"REVIEW":stage==="approved"?"APPROVED":stage==="refused"?"REFUSED":"COMPLETE"}</span></div>
     <div className={stage==="refused"?"notice warn":"notice"}>{note}</div>
-    <div className="rule-row"><span className="rule-icon">01</span><div><strong>Spending cap</strong><p>12 credits is within the 20-credit maximum.</p></div></div>
-    <div className="rule-row"><span className="rule-icon">02</span><div><strong>Recipient allowlist</strong><p>Alex is explicitly allowed in this walkthrough.</p></div></div>
+    <div className="rule-row"><span className="rule-icon">01</span><div><strong>Spending cap</strong><p>{Number(amount)>0&&Number(amount)<=20? "Amount is within the 20-credit maximum.":"Amount must be positive and no more than 20 credits."}</p></div></div>
+    <div className="rule-row"><span className="rule-icon">02</span><div><strong>Recipient allowlist</strong><p>{["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}</p></div></div>
     <div className="rule-row"><span className="rule-icon">03</span><div><strong>Human control</strong><p>Approval and mock execution are separate steps.</p></div></div>
     {receipt&&<div className="proposal-card"><div className="receipt-title">{receipt.recipient} · {receipt.amount} credits</div><div className="receipt-meta">{receipt.decision}</div><p style={{marginTop:9}}>{receipt.reason}</p><div className="hash" style={{marginTop:10}}>DEMO RECEIPT · NOT IN PERSISTENT CHAIN</div></div>}
    </aside>
