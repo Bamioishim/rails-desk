@@ -63,7 +63,7 @@ export default function GuidedDemoPage(){
   <main className="demo-wrap">
    <div className="demo-head">
     <div><p className="demo-eyebrow">Interactive walkthrough</p><h1 className="demo-title">See the rails in action.</h1><p className="demo-lead">A guided run through the same proposal, policy and decision pattern. You can take over at any point.</p></div>
-    <Link href="/propose" className="ref-btn ref-secondary">Exit demo</Link>
+    <Link href="/" className="ref-btn ref-secondary">Exit demo</Link>
    </div>
    <div className="demo-toolbar">
     <div><span className="demo-pill">Isolated demo</span><span className="demo-toolbar-copy">No shared policy or receipt data is changed.</span></div>
