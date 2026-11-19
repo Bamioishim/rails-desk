@@ -1,3 +1,5 @@
+# To enable: copy this file to .github/workflows/kane-gate.yml (needs a GitHub login with workflow permission),
+# then add repository secrets LT_USERNAME and LT_ACCESS_KEY.
 name: Kane gate
 
 # Runs the Kane CLI browser tests against a fresh build of this PR and fails the check

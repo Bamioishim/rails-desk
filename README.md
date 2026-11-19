@@ -70,24 +70,62 @@ The test suite uses temporary directories and does not touch `data/receipts.json
 
 Existing browser receipts are loaded into a separate preserved-history section and remain in the original localStorage key. New app decisions are written to the file-backed chain; the receipt page displays that file chain and its server-side verification status. The CLI verifier checks the same file. The two histories are deliberately kept separate because the app cannot safely assume it can rewrite or migrate an individual user's browser data.
 
-## Kane browser acceptance
+## Verified with Kane CLI
 
-Kane CLI browser tests are separate from `npm test`. They drive Chrome against a running app (local, preview, or production) and stay in Demo (mock) mode: no wallet connection and no real transfers.
+Rails Desk is built by an AI coding agent (the Grok Bot coding agent) and verified by [Kane CLI](https://www.testmuai.com/kane-cli/) from TestMu AI. Kane drives a real Chrome through the flows in `tests/kane/*_test.md`, written in plain English, and decides pass or fail. Its verdict goes straight back to the coding agent: **the agent isn't done until Kane is green.**
 
-The committed tests in `tests/kane/` cover the landing-page demo entry, the live TapeOut policy-circuit labels (Approved / Needs your OK / Blocked), a review-and-mock-execution flow, an allowlist refusal, and the `/xlayer` TapeOut identity lookup.
+### The loop
 
-```bash
-# Install the CLI once (same version the tests were authored against)
-npm install -g @testmuai/kane-cli@0.10.6
-
-# Put LT_USERNAME and LT_ACCESS_KEY in a gitignored .env (see .env.example)
-# Start the app in another terminal: npm run dev
-npm run test:kane
+```mermaid
+flowchart LR
+  A[Coding agent changes code] --> B[npm run kane:gate]
+  B --> C[Build + start app on :3100]
+  C --> D[Kane CLI runs tests/kane in Chrome]
+  D --> E{All pass?}
+  E -- no --> F[KANE_REPORT.md: fix request<br/>failing step, expected vs actual,<br/>Kane's diagnosis, run link, likely files]
+  F --> A
+  E -- yes --> G[exit 0: push / deploy allowed]
+  D -.-> H[.kane/last-report.json<br/>+ Kane Test Manager share links]
 ```
 
-`BASE_URL` defaults to `http://127.0.0.1:3000`. Point it at another host if needed, for example `BASE_URL=https://rails-desk.vercel.app npm run test:kane`. The production site does not include `/xlayer` or the circuit labels until this branch is deployed, so those tests will fail there.
+- **`scripts/kane-gate.mjs`** (`npm run kane:gate`) builds the app, starts it, runs Kane with `kane-cli testrun run --agent`, and parses Kane's NDJSON stream and per-test session logs. It writes `.kane/last-report.json` (machine-readable) and `KANE_REPORT.md`, then exits **1 on any failure** (2 on setup errors).
+- **`KANE_REPORT.md` is a re-prompt for the agent.** On failure it contains a "Fix request for the coding agent" section with the failing step, expected vs actual values, Kane's own diagnosis, the Kane run link (video, steps, screenshots) and the source files and lines that contain the words Kane flagged.
+- **Agents are told to use it.** [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md) and [`.cursor/rules/kane-gate.mdc`](.cursor/rules/kane-gate.mdc) require the agent to run the gate after every change and keep fixing until the report says PASS.
+- **Red blocks shipping.** `npm run hooks:install` enables a [`pre-push`](.githooks/pre-push) hook that runs the gate. `npm run deploy` runs it first through `predeploy`. [`ci/kane-gate.yml`](ci/kane-gate.yml) is a GitHub Actions workflow that runs it on every PR. Copy it into `.github/workflows/` and add the repo secrets `LT_USERNAME` and `LT_ACCESS_KEY`. Without secrets it skips instead of failing, so forks and Vercel builds don't break.
 
-The runner reads credentials only from the environment. It never prints or commits them. Chrome must be installed locally. The first authenticated run authors the tests and uses Kane credits; later runs can replay recorded steps if you keep the generated `output-*/` folders (they are gitignored by default).
+### Fail → fix → pass (real run, Nov 20, 2026)
+
+| Step | Commit | What happened | Kane run |
+|---|---|---|---|
+| 1. New requirement | `0147902` | Added `tests/kane/demo-blocked-wording_test.md`: a blocked payment must say "Blocked" in the circuit rule, the referee status pill and the receipt. | |
+| 2. Kane **fails** | `4c74d62` | The gate exited 1. Kane: *"The checked Mallory proposal shows Refused in the status and receipt, so required Blocked checkpoints cannot pass."* See [the report](docs/kane-evidence/01-fail-blocked-wording.md). | [failed run](https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V0R1CZ9AR5HYC0R09S8529/dashboard/share/US_JD4PJKNGQ12XDJMQT0KJK2QREULES6L2AM622HSWS2PUQDN80W99VH6CNTV7Q19Y?type=summary&agentView=true&fqdn=summary-page) |
+| 3. Agent improves the hint | `a327bb9` | Reading the report, the agent narrowed the gate's likely-file hints to the words Kane flagged. Re-rendered from the saved run with no new Kane credits, it now points to the `"Refused"` lines in `src/app/demo/page.tsx`. | |
+| 4. Agent fixes the app | `7b8bdd7` | Blocked proposals get their own `blocked` stage, so the pill and receipt now say "Blocked". "Refused" is kept for a manual refusal, and "Cancel instead" after approval now records "Cancelled". | |
+| 5. Kane **passes** | `71b1806` | The gate exited 0 with 3/3 passing. See [the report](docs/kane-evidence/02-pass-after-fix.md). | [blocked wording](https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1SX4CRCNXE1CMC5HD2R6K/dashboard/share/US_CFBPIT8W4D2AY6EKGEBKMSG242FVRZTKJJS3E6IYBV0MEK29N5YPB55LOEBNYU7D?type=summary&agentView=true&fqdn=summary-page) · [allowlist](https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1R38ACP7QX0FBP05EPTBT/dashboard/share/US_MKPY4F3RDX1KPJP5DSO5D3VUNYVKVCHY7D2M8PSM7YALPL679YA60TYV7OB7254E?type=summary&agentView=true&fqdn=summary-page) · [circuit labels](https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1W1D2J5HV8QDSZCPTJDBD/dashboard/share/US_7IY0PPNL02PAQGUC8VDB8GGHYQDVUVN0GCDTXMO5KEV8BPZW85C1U0CEUCUTJRYQ?type=summary&agentView=true&fqdn=summary-page) |
+
+Kane caught a real UX inconsistency that the unit tests (`npm test`, 26 passing) couldn't see. The policy logic was right, but the user was shown two different words for the same outcome.
+
+### Run it
+
+```bash
+npm install -g @testmuai/kane-cli@0.10.6        # once; Chrome must be installed
+# LT_USERNAME / LT_ACCESS_KEY in your env or a gitignored .env (see .env.example)
+npm run kane:gate                               # build, start, test everything, write KANE_REPORT.md
+npm run kane:gate -- --match demo-blocked       # only matching tests (saves credits while iterating)
+npm run kane:gate -- --url https://my-preview.vercel.app   # test a deployment instead
+npm run kane:gate -- --from .kane/runs/<ts>/kane-stdout.ndjson   # re-render a saved run, no credits
+npm run hooks:install                           # block git push on a red gate
+```
+
+The committed tests in `tests/kane/` cover:
+- the landing-page demo entry
+- the TapeOut policy-circuit labels (Approved / Needs your OK / Blocked)
+- consistent "Blocked" wording
+- a review-and-mock-execution flow
+- an allowlist block
+- the `/xlayer` TapeOut identity lookup
+
+Tests stay in Demo (mock) mode: no wallet connection and no real transfers (see `.testmuai/context.md`). Credentials are read only from the environment and are never printed, logged or committed. The older `npm run test:kane` runner (`scripts/run-kane-tests.sh`, `BASE_URL`, default `http://127.0.0.1:3000`) still works for ad-hoc runs against an app you started yourself.
 
 ## X Layer and TapeOut
 
