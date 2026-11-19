@@ -1,0 +1,216 @@
+name: Kane preview gate
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  inspect-preview:
+    name: Inspect Vercel preview
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      eligible: ${{ steps.inspect.outputs.eligible }}
+      sha: ${{ steps.inspect.outputs.sha }}
+      preview-url: ${{ steps.inspect.outputs.preview-url }}
+      pr-numbers: ${{ steps.inspect.outputs.pr-numbers }}
+    steps:
+      - name: Validate deployment and find its pull request
+        id: inspect
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = context.payload.deployment || {};
+            const status = context.payload.deployment_status || {};
+            const environment = String(deployment.environment || "").toLowerCase();
+            const skip = (reason) => {
+              core.setOutput("eligible", "false");
+              core.summary.addHeading("Kane preview gate skipped").addRaw(reason).write();
+              core.info(reason);
+            };
+
+            if (status.state !== "success") return skip(`Deployment status is ${status.state || "unknown"}, not success.`);
+            if (deployment.production_environment === true || environment === "production") {
+              return skip("Production deployments are outside this preview gate.");
+            }
+            const isPreview = deployment.production_environment === false || environment.includes("preview");
+            if (!isPreview) return skip(`Deployment environment '${environment || "unknown"}' is not identified as a preview.`);
+
+            const previewUrl = status.environment_url || status.target_url || "";
+            const sha = deployment.sha || "";
+            if (!previewUrl || !sha) {
+              core.setFailed("Vercel deployment status did not include a preview URL and deployment SHA.");
+              return;
+            }
+            let parsedUrl;
+            try { parsedUrl = new URL(previewUrl); } catch { parsedUrl = null; }
+            if (!parsedUrl || !["http:", "https:"].includes(parsedUrl.protocol)) {
+              core.setFailed("Vercel supplied an invalid preview URL.");
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const fullName = `${owner}/${repo}`;
+            const { data: associated } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner, repo, commit_sha: sha
+            });
+            const openForSha = associated.filter(pr => pr.state === "open" &&
+              (pr.head.sha === sha || pr.merge_commit_sha === sha));
+            if (openForSha.length === 0) return skip("No open pull request points at this deployed commit.");
+
+            // Do not expose TestMu credentials to code from a fork. Same-repository branches
+            // are the supported credentialed path; fork previews are deliberately skipped.
+            const trusted = openForSha.filter(pr => pr.head.repo && pr.head.repo.full_name === fullName);
+            if (trusted.length === 0) return skip("This preview belongs to a fork pull request. TestMu credentials are not passed to fork code.");
+
+            core.setOutput("eligible", "true");
+            core.setOutput("sha", sha);
+            core.setOutput("preview-url", previewUrl);
+            core.setOutput("pr-numbers", trusted.map(pr => pr.number).join(","));
+            core.summary.addHeading("Kane preview gate queued")
+              .addRaw(`Preview: ${previewUrl}\n\nCommit: ${sha}\n\nPull request(s): ${trusted.map(pr => `#${pr.number}`).join(", ")}`)
+              .write();
+
+  kane:
+    name: Kane browser tests
+    needs: inspect-preview
+    if: needs.inspect-preview.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check out the deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.inspect-preview.outputs.sha }}
+
+      - name: Point the test definitions at this Vercel preview
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ needs.inspect-preview.outputs.preview-url }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          preview_url = os.environ["PREVIEW_URL"].rstrip("/")
+          marker = "https://preview.invalid"
+          files = sorted(Path("tests/kane").glob("*_test.md"))
+          if len(files) != 7:
+              raise SystemExit(f"Expected exactly 7 Kane tests, found {len(files)}")
+          for path in files:
+              text = path.read_text(encoding="utf-8")
+              if marker not in text:
+                  raise SystemExit(f"Preview URL marker missing from {path}")
+              path.write_text(text.replace(marker, preview_url), encoding="utf-8")
+          print(f"Configured {len(files)} Kane tests for {preview_url}")
+          PY
+
+      - name: Run the seven Kane browser flows
+        id: kane
+        continue-on-error: true
+        uses: LambdaTest/kane-cli/integrations/github-action/kane-cli-browser-run@9853ef16b94b96be9a7bc76548ff6a5dc85127aa
+        with:
+          test-files: "tests/kane/**/*_test.md"
+          parallel: "1"
+          fail-fast: "false"
+          username: ${{ secrets.LT_USERNAME }}
+          access-key: ${{ secrets.LT_ACCESS_KEY }}
+          kane-version: "0.10.6"
+          node-version: "24"
+          comment-on-pr: "false"
+          artifact-name: "rails-desk-kane-evidence"
+          logs-artifact-name: "rails-desk-kane-logs"
+
+      - name: Preserve Kane-authored replay folders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rails-desk-kane-replay-folders-${{ github.run_id }}
+          path: tests/kane/output-*/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Send Kane's result and evidence to the pull request
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          KANE_OUTCOME: ${{ steps.kane.outcome }}
+          KANE_STATUS: ${{ steps.kane.outputs.status }}
+          KANE_SUMMARY: ${{ steps.kane.outputs.summary }}
+          KANE_RESULTS_FILE: ${{ steps.kane.outputs.results-file }}
+          KANE_EVIDENCE_URL: ${{ steps.kane.outputs.evidence-url }}
+          PREVIEW_URL: ${{ needs.inspect-preview.outputs.preview-url }}
+          DEPLOYED_SHA: ${{ needs.inspect-preview.outputs.sha }}
+          PR_NUMBERS: ${{ needs.inspect-preview.outputs.pr-numbers }}
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- rails-desk-kane-preview-gate -->";
+            const passed = process.env.KANE_OUTCOME === "success" && process.env.KANE_STATUS === "passed";
+            const verdict = passed ? "passed" : (process.env.KANE_STATUS === "failed" ? "failed" : "did not run");
+            const summary = process.env.KANE_SUMMARY || "Kane did not produce a test verdict. Check this workflow's logs for the authentication or setup error.";
+            let results = "";
+            try {
+              results = fs.readFileSync(process.env.KANE_RESULTS_FILE || "kane-out/results.md", "utf8").slice(0, 12000).replace(/@/g, "@\u200b");
+            } catch {}
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const evidence = process.env.KANE_EVIDENCE_URL
+              ? `[Open Kane evidence pack](${process.env.KANE_EVIDENCE_URL})`
+              : `Evidence and raw logs, if produced, are attached to [this workflow run](${runUrl}).`;
+            const body = [
+              marker,
+              `## ${passed ? ":white_check_mark:" : ":x:"} Rails Desk Kane preview gate: ${verdict}`,
+              "",
+              `Preview: ${process.env.PREVIEW_URL}`,
+              `Commit: \`${process.env.DEPLOYED_SHA}\``,
+              `Workflow: [run details](${runUrl})`,
+              "",
+              `**Summary:** ${summary}`,
+              "",
+              results ? "### Kane results\n\n" + results : "### Kane results\n\nNo results table was produced; use the workflow logs to see why the run did not start or complete.",
+              "",
+              `**Evidence:** ${evidence}`,
+              "",
+              passed
+                ? "All seven browser checks passed for this preview."
+                : "**Coding-agent handoff:** Read the failing Kane row(s), workflow logs, and evidence pack. Fix the application code rather than weakening a valid check, then push the fix. Vercel's next successful preview deployment automatically reruns this gate."
+            ].join("\n");
+
+            for (const value of (process.env.PR_NUMBERS || "").split(",").filter(Boolean)) {
+              const issue_number = Number(value);
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number, per_page: 100
+              });
+              const existing = comments.find(comment => comment.body && comment.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo, issue_number, body
+                });
+              }
+            }
+
+      - name: Enforce a passing Kane verdict
+        if: always()
+        shell: bash
+        env:
+          KANE_OUTCOME: ${{ steps.kane.outcome }}
+          KANE_STATUS: ${{ steps.kane.outputs.status }}
+        run: |
+          if [[ "$KANE_OUTCOME" == "success" && "$KANE_STATUS" == "passed" ]]; then
+            echo "All seven Kane browser flows passed."
+            exit 0
+          fi
+          echo "Kane did not pass (outcome=${KANE_OUTCOME:-unknown}, status=${KANE_STATUS:-missing})." >&2
+          exit 1

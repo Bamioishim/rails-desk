@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {useEffect, useRef, useState} from "react";
 
@@ -53,7 +54,7 @@ export default function GuidedDemoPage(){
  return <div className="reference-home demo-home">
   <header className="ref-nav">
    <div className="ref-wrap ref-nav-in">
-    <Link className="ref-brand" href="/"><img src="/rails-desk-mark.svg" alt=""/>rails desk</Link>
+    <Link className="ref-brand" href="/"><Image src="/rails-desk-mark.svg" alt="" width={30} height={30}/>rails desk</Link>
     <nav className="ref-links">
      <Link href="/#about">About</Link><Link href="/#features">Features</Link><Link href="/#how">How it works</Link><Link href="/#questions">Questions</Link>
     </nav>
@@ -91,7 +92,7 @@ export default function GuidedDemoPage(){
      </div>
     </section>
     <aside className="demo-panel">
-     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent's opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="refused"?"Refused":"Complete"}</span></div>
+     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent&apos;s opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="refused"?"Refused":"Complete"}</span></div>
      <div className="demo-notice">{note}</div>
      <div className="demo-rule"><span>01</span><div><strong>Spending cap</strong><p>{Number(amount)>0&&Number(amount)<=20? "Amount is within the 20-credit maximum.":"Amount must be positive and no more than 20 credits."}</p></div></div>
      <div className="demo-rule"><span>02</span><div><strong>Recipient allowlist</strong><p>{["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}</p></div></div>
