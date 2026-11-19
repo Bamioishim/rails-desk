@@ -45,7 +45,7 @@ export default function ProposePage(){
         <div className="field"><label htmlFor="recipient">Recipient</label><input id="recipient" value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="e.g. Alex" required/><div className="recipient-chips">{rails.allowedRecipients.slice(0,5).map(x=><button type="button" key={x} className="recipient-chip" onClick={()=>setRecipient(x)}>{x}</button>)}</div></div>
         <div className="field"><label htmlFor="amount">Transfer amount · credits</label><input id="amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} required/></div>
         <div className="field"><label htmlFor="reason">Reason from the agent</label><textarea id="reason" value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} required/></div>
-        <div className="prompt-input"><span>Mock decisions are written to the local receipt file</span><button className="button button-small" type="submit">Submit for review ↗</button></div>
+        <div className="prompt-input"><span>Mock decisions are written to the local receipt file</span><button className="button button-small" type="submit">Submit for review </button></div>
        </form>
       </>}
      </div>
@@ -60,12 +60,12 @@ export default function ProposePage(){
    <div className="section-eyebrow">HOW RAILS DESK WORKS</div>
    <h2 className="how-title">One control layer for every proposal. <span>Boundaries in, accountable actions out.</span></h2>
    <div className="how-grid">
-    <article className="how-card"><div className="how-number">01</div><h3>Set your boundaries.</h3><p>Choose a maximum transfer amount and explicitly trusted recipients. Your policy is checked again when a proposal is approved.</p><Link href="/rails" className="mono">CONFIGURE RAILS ↗</Link></article>
-    <article className="how-card"><div className="how-number">02</div><h3>Review the proposal.</h3><p>Each request is evaluated against your rules. A persuasive explanation cannot override a spending limit or recipient restriction.</p><Link href="#proposal" className="mono">TRY A PROPOSAL ↗</Link></article>
-    <article className="how-card"><div className="how-number">03</div><h3>Keep a clear record.</h3><p>Approvals, refusals and cancellations are recorded in a locally stored, hash-linked receipt chain you can verify and export.</p><Link href="/receipts" className="mono">VIEW RECEIPTS ↗</Link></article>
+    <article className="how-card"><div className="how-number">01</div><h3>Set your boundaries.</h3><p>Choose a maximum transfer amount and explicitly trusted recipients. Your policy is checked again when a proposal is approved.</p><Link href="/rails" className="mono">CONFIGURE RAILS </Link></article>
+    <article className="how-card"><div className="how-number">02</div><h3>Review the proposal.</h3><p>Each request is evaluated against your rules. A persuasive explanation cannot override a spending limit or recipient restriction.</p><Link href="#proposal" className="mono">TRY A PROPOSAL </Link></article>
+    <article className="how-card"><div className="how-number">03</div><h3>Keep a clear record.</h3><p>Approvals, refusals and cancellations are recorded in a locally stored, hash-linked receipt chain you can verify and export.</p><Link href="/receipts" className="mono">VIEW RECEIPTS </Link></article>
    </div>
   </section>
 
-  <section className="cta-band"><div><h2>More room for agents.<br/>Clearer boundaries for you.</h2><p>Start with a simple policy. Every proposal gets checked before it can be recorded.</p></div><Link href="/rails" className="button">Set up your rails ↗</Link></section>
+  <section className="cta-band"><div><h2>More room for agents.<br/>Clearer boundaries for you.</h2><p>Start with a simple policy. Every proposal gets checked before it can be recorded.</p></div><Link href="/rails" className="button">Set up your rails </Link></section>
  </>;
 }

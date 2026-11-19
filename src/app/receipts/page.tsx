@@ -31,8 +31,8 @@ export default function ReceiptsPage() {
         <p className="page-sub">This is the same append-only file written by app decisions and checked by the receipt verifier.</p>
       </div>
       <div className="action-row">
-        <button className="button ghost" onClick={() => void refreshReceipts()}>↻ Refresh</button>
-        <button className="button" onClick={exportReceipts}>↓ Export JSON</button>
+        <button className="button ghost" onClick={() => void refreshReceipts()}>Refresh</button>
+        <button className="button" onClick={exportReceipts}>Export JSON</button>
       </div>
     </div>
     {receiptError && <div className="notice warn" style={{ marginBottom: 16 }}>{receiptError}</div>}

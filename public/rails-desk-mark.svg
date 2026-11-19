@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 202" width="40" height="40" role="img" aria-label="Rails Desk">
+  <path fill="currentColor" fill-rule="evenodd"
+    d="M0 0H135C171 0 194 22 194 58V112C194 128 188 142 176 150H198V202H111L65 167H0Z
+       M71 45H115A30.5 30.5 0 0 1 115 106H71A30.5 30.5 0 0 1 71 45Z"/>
+  <rect y="172" width="63" height="3" fill="currentColor"/>
+  <rect y="184" width="63" height="3" fill="currentColor"/>
+  <rect y="197" width="63" height="3" fill="currentColor"/>
+</svg>
