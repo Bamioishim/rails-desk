@@ -145,7 +145,7 @@ function likelyFiles(route, rawPhrases) {
       }
     }
   }
-  return {byRoute: [...files].filter(f => existsSync(path.join(ROOT, f))), byPhrase: [...hits].map(([file, lines]) => ({file, lines: lines.sort((a, b) => a - b).slice(0, 8), phrases: phrases.filter(p => p.length >= 4 && /[A-Za-z]{3}/.test(p) && readFileSync(path.join(ROOT, file), "utf8").includes(p))}))};
+  return {byRoute: [...files].filter(f => existsSync(path.join(ROOT, f))), byPhrase: [...hits].map(([file, lines]) => ({file, lines: lines.sort((a, b) => a - b).slice(0, 12), phrases: phrases.filter(p => p.length >= 4 && /[A-Za-z]{3}/.test(p) && readFileSync(path.join(ROOT, file), "utf8").includes(p))}))};
 }
 
 // ---------- parse one member's Kane session ----------
@@ -161,7 +161,9 @@ function frontmatter(text) {
   const body = text.replace(/^---[\s\S]*?---/, "").replace(/^#\s+.+$/m, "").trim();
   return {fm, title, body};
 }
-function quoted(s) { return [...String(s ?? "").matchAll(/"([^"]{2,80})"/g)].map(m => m[1]); }
+function quoted(s) { return [...String(s ?? "").matchAll(/["\u201c]([^"\u201c\u201d]{2,80})["\u201d]/g)].map(m => m[1]); }
+// Capitalised UI words Kane names in its verdict, e.g. "shows Refused in the status".
+function uiWords(s) { return [...String(s ?? "").matchAll(/\b(?:shows?|says?|reads?|word|presents? \w+ \w+ as)\s+["\u201c]?([A-Z][a-z]+(?: [a-z]+){0,2})/g)].map(m => m[1]); }
 
 function memberReport(member, events) {
   const src = path.join(ROOT, "tests/kane", path.basename(member.path));
@@ -179,7 +181,10 @@ function memberReport(member, events) {
   const status = done.overall_status ?? summary.overall_status ?? member.status ?? "unknown";
   const failingStep = runEnd.reason ?? null;
   const route = (() => { try { return new URL(String(fm.url ?? "").replace(MARKER, "http://x")).pathname || "/"; } catch { return "/"; } })();
-  const phrases = [...new Set([...quoted(failingStep), ...checks.filter(c => c.passed === false).flatMap(c => [...quoted(c.condition), String(c.actual ?? "")]), ...quoted(body)])];
+  // Prefer what Kane says went wrong; fall back to the test's own quoted phrases.
+  const verdict = [failingStep, runEnd.one_liner, runEnd.summary].join("\n");
+  let phrases = [...new Set([...quoted(verdict), ...uiWords(verdict), ...checks.filter(c => c.passed === false).flatMap(c => [...quoted(c.condition), String(c.actual ?? "")])])];
+  if (!phrases.length) phrases = quoted(body);
   return {
     test: `tests/kane/${path.basename(member.path)}`, title, route, status,
     durationS: done.duration_s ?? member.duration_s ?? null,
