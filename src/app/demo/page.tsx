@@ -10,7 +10,7 @@ import {addressUrl, txUrl, xLayer, xLayerTestnet, XLAYER_FAUCET_URL} from "@/lib
 import {allowedTapeNames, DEMO_ALLOWED, DEMO_CAP, DEMO_REVIEW_LIMIT, namedPayees} from "@/lib/demo-config";
 import {saveOnchainReceipt} from "@/lib/onchain-receipts";
 
-type Stage = "idle" | "typing" | "review" | "approved" | "refused" | "complete";
+type Stage = "idle" | "typing" | "review" | "approved" | "blocked" | "refused" | "cancelled" | "complete";
 type Mode = "mock" | "xlayer";
 type DemoReceipt = {recipient:string;amount:number;decision:string;reason:string;tx?:TransferResult;anchor?:Hex};
 
@@ -69,7 +69,8 @@ export default function GuidedDemoPage(){
   setNote("Demo complete. This illustrative receipt exists only in this page's memory and is not part of your real receipt chain.");
  };
  const takeControl=()=>{runId.current+=1;setAuto(false);setNote("Auto-play paused. You can edit the fields and use the controls yourself.");};
- const refuseWith=(reasonText:string,noteText:string)=>{setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:reasonText});setNote(noteText);};
+ // A proposal stopped by the rails is "Blocked" everywhere: circuit rule, status pill and receipt.
+ const refuseWith=(reasonText:string,noteText:string)=>{setStage("blocked");setReceipt({recipient,amount:value,decision:"Blocked",reason:reasonText});setNote(noteText);};
  const submit=async()=>{
   setIdentity(null);setOnchainPolicy(null);
   if(!Number.isFinite(value)||value<=0){refuseWith("Amount must be greater than zero.","Blocked: the amount must be a positive number.");return;}
@@ -109,7 +110,7 @@ export default function GuidedDemoPage(){
    setWalletError(message);setNote("Nothing was sent. You can try again or cancel instead.");
   }finally{setBusy(false);}
  };
- const refuse=()=>{setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:"Manually refused in the isolated demo."});setNote("Refusal shown in the walkthrough only. Nothing was sent.");};
+ const refuse=()=>{const cancelling=stage==="approved";setStage(cancelling?"cancelled":"refused");setReceipt({recipient,amount:value,decision:cancelling?"Cancelled":"Refused",reason:cancelling?"Cancelled after approval, before execution, in the isolated demo.":"Manually refused in the isolated demo."});setNote(cancelling?"Cancelled in the walkthrough only. Nothing was sent.":"Refusal shown in the walkthrough only. Nothing was sent.");};
  const connect=async()=>{
   setWalletError(null);
   try{setAccount(await connectWallet());setMode("xlayer");}
@@ -151,8 +152,8 @@ export default function GuidedDemoPage(){
    </div>
    <div className="demo-progress" aria-label="Walkthrough progress">
     <span className={stage!=="idle"?"done":""}>01 Propose</span><i/>
-    <span className={["approved","refused","complete"].includes(stage)?"done":stage==="review"?"current":""}>02 Check</span><i/>
-    <span className={stage==="complete"||stage==="refused"?"done":""}>03 Record</span>
+    <span className={["approved","blocked","refused","cancelled","complete"].includes(stage)?"done":stage==="review"?"current":""}>02 Check</span><i/>
+    <span className={["complete","blocked","refused","cancelled"].includes(stage)?"done":""}>03 Record</span>
    </div>
    <div className="demo-grid">
     <section className="demo-panel">
@@ -171,7 +172,7 @@ export default function GuidedDemoPage(){
      {walletError&&<p className="demo-footnote" role="alert">{walletError}{mode==="xlayer"&&<> Need test OKB? Use the <a href={XLAYER_FAUCET_URL} target="_blank" rel="noreferrer">X Layer faucet</a>.</>}</p>}
     </section>
     <aside className="demo-panel">
-     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent&apos;s opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="refused"?"Refused":"Complete"}</span></div>
+     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent&apos;s opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="blocked"?"Blocked":stage==="refused"?"Refused":stage==="cancelled"?"Cancelled":"Complete"}</span></div>
      <div className="demo-notice">{note}</div>
      <div className="demo-rule"><span>01</span><div><strong>Spending cap</strong><p>{value>0&&value<=DEMO_CAP? `Amount is within the ${DEMO_CAP}-${unit==="USD"?"dollar":"credit"} maximum.`:`Amount must be positive and no more than ${DEMO_CAP} ${unit}.`}</p></div></div>
      <div className="demo-rule"><span>02</span><div><strong>Recipient allowlist</strong><p>{isAllowlisted(recipient)? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}{identity&&<> Verified on X Layer: circuit {identity.label} on {identity.processorName}, held by <a href={addressUrl(xLayer,identity.holder)} target="_blank" rel="noreferrer">{short(identity.holder)}</a>{identity.opened?<>, container <a href={addressUrl(xLayer,identity.container)} target="_blank" rel="noreferrer">{short(identity.container)}</a></>:", container not opened yet"}.</>}</p></div></div>
