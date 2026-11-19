@@ -5,7 +5,7 @@ import {useStore} from "@/components/store";
 import {checkProposal} from "@/lib/rails";
 
 export default function ProposePage(){
- const {rails,receipts,pending,pendingApproved,propose,decide,executeApproved}=useStore();
+ const {rails,receipts,pending,pendingApproved,propose,decide,executeApproved,receiptError}=useStore();
  const [amount,setAmount]=useState("10");
  const [recipient,setRecipient]=useState("Alex");
  const [reason,setReason]=useState("Monthly team expense reimbursement");
@@ -31,7 +31,7 @@ export default function ProposePage(){
        <div className="section-head"><div><h3 className="panel-title">Proposal awaiting review</h3><div className="panel-desc">Submitted {new Date(pending.createdAt).toLocaleString()}</div></div><span className="tag">HUMAN REVIEW</span></div>
        <div className="receipt-row"><div><div className="receipt-title">{pending.recipient}</div><div className="receipt-meta">{pending.reason}</div></div><div className="receipt-amount">{pending.amount.toLocaleString()} <small>credits</small></div></div>
        <div className={checkProposal(pending,rails).decision==="approved"?"notice":"notice warn"}><strong>{checkProposal(pending,rails).decision==="approved"?"Within your rails":"Blocked by your rails"}</strong><br/>{checkProposal(pending,rails).reason}</div>
-       {pendingApproved?<><p className="hint">Approved for mock execution. You can still cancel before recording the execution.</p><div className="action-row"><button className="button" onClick={()=>void executeApproved()}>Execute mock transfer</button><button className="button danger" onClick={()=>void decide("cancelled")}>Cancel instead</button></div></>:<div className="action-row"><button className="button" disabled={checkProposal(pending,rails).decision!=="approved"} onClick={()=>void decide("approved")}>Approve proposal</button><button className="button danger" onClick={()=>void decide("refused")}>Refuse</button><button className="button ghost" onClick={()=>void decide("cancelled")}>Cancel</button></div>}
+       {receiptError&&<div className="notice warn" style={{marginTop:12}}>{receiptError}</div>}{pendingApproved?<><p className="hint">Approved for mock execution. You can still cancel before recording the execution.</p><div className="action-row"><button className="button" onClick={()=>void executeApproved()}>Execute mock transfer</button><button className="button danger" onClick={()=>void decide("cancelled")}>Cancel instead</button></div></>:checkProposal(pending,rails).decision!=="approved"?<div className="action-row"><button className="button danger" onClick={()=>void decide("approved")}>Record policy refusal</button><button className="button ghost" onClick={()=>void decide("cancelled")}>Cancel</button></div>:<div className="action-row"><button className="button" onClick={()=>void decide("approved")}>Approve proposal</button><button className="button danger" onClick={()=>void decide("refused")}>Refuse</button><button className="button ghost" onClick={()=>void decide("cancelled")}>Cancel</button></div>}
       </div>:<>
        <div className="prompt-bubble">Can I send a transfer for review?</div>
        <div className="prompt-response">
@@ -45,7 +45,7 @@ export default function ProposePage(){
         <div className="field"><label htmlFor="recipient">Recipient</label><input id="recipient" value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="e.g. Alex" required/><div className="recipient-chips">{rails.allowedRecipients.slice(0,5).map(x=><button type="button" key={x} className="recipient-chip" onClick={()=>setRecipient(x)}>{x}</button>)}</div></div>
         <div className="field"><label htmlFor="amount">Transfer amount · credits</label><input id="amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} required/></div>
         <div className="field"><label htmlFor="reason">Reason from the agent</label><textarea id="reason" value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} required/></div>
-        <div className="prompt-input"><span>Proposal details stay in this local browser</span><button className="button button-small" type="submit">Submit for review ↗</button></div>
+        <div className="prompt-input"><span>Mock decisions are written to the local receipt file</span><button className="button button-small" type="submit">Submit for review ↗</button></div>
        </form>
       </>}
      </div>

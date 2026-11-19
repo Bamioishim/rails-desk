@@ -7,11 +7,12 @@ Rails Desk is a mocked-transfer control desk. Agents can propose transfers, but 
 - No real funds, wallets, blockchain networks, or transfers.
 - Spending-cap and case-insensitive recipient allowlist checks are deterministic.
 - Approval, refusal, and cancellation are recorded with their reason.
-- Browser receipts remain in the existing browser localStorage store.
-- New local test receipts can also be written to an append-only JSON Lines file at `data/receipts.jsonl`.
-- Receipt verification recomputes every SHA-256 hash, checks sequence numbers and previous-hash links, and reports the first broken entry.
+- Existing browser receipts are preserved in localStorage as separate legacy history; they are not deleted or silently migrated.
+- New app approvals, policy refusals, user refusals and cancellations append to the same JSON Lines file at `data/receipts.jsonl`.
+- The app receipt page reads that file through the Node API route and displays the same chain checked by the CLI verifier.
+- The Node route re-evaluates each proposal against the configured rails included with the request before recording an approved mock execution. This is still a local demo with no user accounts or authentication, not a production security boundary.
 
-The file-backed log is local development storage, not a production database. It is not durable on ephemeral/serverless hosting and can be modified by anyone with filesystem access. Hash links are tamper-evident, not cryptographic proof against an attacker who can rewrite the entire file and recompute every hash. Back up the file if it matters.
+The file-backed log is suitable for a local Node development process with a writable project directory. It is not a production database. Vercel/serverless filesystems are ephemeral and the project directory may be read-only, so this file is not durable or reliable across invocations or instances there. Configure a persistent database or object store before deploying for real use. Anyone with filesystem access can rewrite the entire file and recompute its hashes; the chain is tamper-evident, not immutable.
 
 ## Local setup
 
@@ -55,11 +56,11 @@ node scripts/receipts.mjs append --amount 10 --recipient Alex --reason "isolated
 node scripts/receipts.mjs verify --file /tmp/rails-desk-test.jsonl
 ```
 
-The test suite uses temporary directories and does not touch `data/receipts.jsonl` or existing browser localStorage data.
+The test suite uses temporary directories and does not touch `data/receipts.jsonl` or existing browser localStorage data. API route tests call the actual GET/POST handlers directly; no server is started.
 
 ## Existing browser receipts
 
-The app does not migrate, clear, or overwrite existing browser receipts as part of the file-log feature. The browser receipt page continues to show its valid/broken chain badge for the localStorage chain. The CLI prints a corresponding valid/broken status for the append-only local file.
+Existing browser receipts are loaded into a separate preserved-history section and remain in the original localStorage key. New app decisions are written to the file-backed chain; the receipt page displays that file chain and its server-side verification status. The CLI verifier checks the same file. The two histories are deliberately kept separate because the app cannot safely assume it can rewrite or migrate an individual user's browser data.
 
 ## Kane browser acceptance
 
