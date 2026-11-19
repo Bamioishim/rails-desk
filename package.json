@@ -11,7 +11,8 @@
     "receipts:verify": "node scripts/receipts.mjs verify",
     "receipts:append": "node scripts/receipts.mjs append",
     "circuit": "node scripts/policy-circuit.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:kane": "bash scripts/run-kane-tests.sh"
   },
   "dependencies": {
     "next": "16.4.6",

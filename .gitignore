@@ -10,3 +10,8 @@ coverage/
 .DS_Store
 data/*.jsonl
 *.tsbuildinfo
+
+# Kane / LambdaTest local evidence (never commit credentials or run artifacts)
+.testmuai/evidence/
+kane-out/
+tests/kane/output-*/

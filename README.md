@@ -72,7 +72,22 @@ Existing browser receipts are loaded into a separate preserved-history section a
 
 ## Kane browser acceptance
 
-Kane CLI browser verification is a separate required step. Unit tests are not Kane runs. The seven approved browser flows must be executed in an authenticated Kane environment with Chrome and approved existing credits.
+Kane CLI browser tests are separate from `npm test`. They drive Chrome against a running app (local, preview, or production) and stay in Demo (mock) mode: no wallet connection and no real transfers.
+
+The committed tests in `tests/kane/` cover the landing-page demo entry, the live TapeOut policy-circuit labels (Approved / Needs your OK / Blocked), a review-and-mock-execution flow, an allowlist refusal, and the `/xlayer` TapeOut identity lookup.
+
+```bash
+# Install the CLI once (same version the tests were authored against)
+npm install -g @testmuai/kane-cli@0.10.6
+
+# Put LT_USERNAME and LT_ACCESS_KEY in a gitignored .env (see .env.example)
+# Start the app in another terminal: npm run dev
+npm run test:kane
+```
+
+`BASE_URL` defaults to `http://127.0.0.1:3000`. Point it at another host if needed, for example `BASE_URL=https://rails-desk.vercel.app npm run test:kane`. The production site does not include `/xlayer` or the circuit labels until this branch is deployed, so those tests will fail there.
+
+The runner reads credentials only from the environment. It never prints or commits them. Chrome must be installed locally. The first authenticated run authors the tests and uses Kane credits; later runs can replay recorded steps if you keep the generated `output-*/` folders (they are gitignored by default).
 
 ## X Layer and TapeOut
 
