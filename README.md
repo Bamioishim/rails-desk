@@ -64,4 +64,12 @@ Existing browser receipts are loaded into a separate preserved-history section a
 
 ## Kane browser acceptance
 
-Kane CLI browser verification is a separate required step. Unit tests are not Kane runs. The seven approved browser flows must be executed in an authenticated Kane environment with Chrome and approved existing credits.
+Kane browser verification is separate from unit tests. Once `.github/workflows/kane-preview-gate.yml` is on the default branch, it listens for successful Vercel `deployment_status` events, checks out the deployed commit, substitutes that deployment's preview URL into seven committed Kane tests, and runs them in headless Chrome. It is scoped to open pull requests from branches in this repository; fork PRs are skipped so TestMu credentials are never exposed to fork code.
+
+The seven tests cover the landing-page demo entry, the guided demo, explicit approval plus mock execution, refusal, spending-cap rejection, allowlist rejection, and Rails settings persisting through a reload. The demo checks are intentionally limited to its isolated mock behavior. They do not claim to exercise a real transfer or to connect `/rails` settings to `/demo`.
+
+To activate the gate, add TestMu's Kane username and access key as repository Actions secrets named `LT_USERNAME` and `LT_ACCESS_KEY`. Confirm Vercel's GitHub integration is enabled and sends deployment status events. If the Vercel preview is protected, this workflow needs an approved bypass configured before browser tests can reach it. Require the **Kane browser tests** check in the repository's branch rules after the workflow has run once.
+
+The first authenticated run has no Kane-recorded replay folders yet, so Kane will author the tests and use credits. The workflow uploads generated folders as a `rails-desk-kane-replay-folders-<run id>` artifact; review and commit those `output-<test-name>/` folders beside their test files so Kane can replay recorded steps at lower cost. A PR comment carries the result table, workflow/evidence links, and a coding-agent handoff. After an agent pushes a fix, Vercel creates a new preview and the gate runs again.
+
+This gate is not yet proven end to end until TestMu credentials are configured and an authenticated preview run succeeds. It reports Kane's findings to the PR but does not independently launch a coding agent; an agent working this repository should follow the handoff instructions in `AGENTS.md`.
