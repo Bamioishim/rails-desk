@@ -13,4 +13,6 @@ export function Shell({children}:{children:React.ReactNode}){
    <div className="header-actions"><span className="local-status"><i/> Local demo</span><Link href="/rails" className="button button-small">Set your rails <span>â†—</span></Link></div>
   </header>
   <main className="main"><div className="content">{children}</div></main>
-  <footer className="site-footer"><div className="footer-top"><Link href="/propose" className="brand footer-brand"><span className="brand-mark">r.</span><span className="brand-word">rails desk</span></Link><p>Let agents do the work.<br/>Keep the boundaries yours.</p><div className="footer-links">{links.map(([href,label])=><Link key={href} href={href}>{label}</Link>)}</div></div><div className="foo¶»§q«^
+  <footer className="site-footer"><div className="footer-top"><Link href="/propose" className="brand footer-brand"><span className="brand-mark">r.</span><span className="brand-word">rails desk</span></Link><p>Let agents do the work.<br/>Keep the boundaries yours.</p><div className="footer-links">{links.map(([href,label])=><Link key={href} href={href}>{label}</Link>)}</div></div><div className="footer-bottom"><span>LOCAL DEMO Â· V0.1</span><span>Proposals are simulated. No funds move.</span><span>Built for clearer agent oversight.</span></div></footer>
+ </div>
+}

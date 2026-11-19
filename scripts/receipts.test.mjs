@@ -24,4 +24,21 @@ describe("append-only receipt file", () => {
     const file = path.join(dir, "receipts.jsonl");
     try {
       await appendFileReceipt({ amount: 10, recipient: "Alex", reason: "one", filePath: file });
-      await appendFileReceipt({ amount: 5, recipient: "Sam", reason: "two", filePath: file ¶»§q«^
+      await appendFileReceipt({ amount: 5, recipient: "Sam", reason: "two", filePath: file });
+      const rows = (await readFile(file, "utf8")).trimEnd().split("\n").map(JSON.parse);
+      rows[0].reason = "tampered";
+      await writeFile(file, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+      expect(await verifyReceiptFile(file)).toMatchObject({ valid: false, brokenAt: 1 });
+      await expect(appendFileReceipt({ amount: 1, recipient: "Alex", reason: "three", filePath: file })).rejects.toThrow("broken at entry 1");
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
+
+  it("identifies malformed JSON at its first line", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "rails-desk-"));
+    const file = path.join(dir, "receipts.jsonl");
+    try {
+      await writeFile(file, '{"oops":\n');
+      expect(await verifyReceiptFile(file)).toMatchObject({ valid: false, brokenAt: 1, error: "invalid JSON" });
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
+});

@@ -37,4 +37,30 @@ npm run build
 Append a mock receipt. The same deterministic default rails apply: cap 20, recipients Alex, Jordan, and Sam.
 
 ```bash
-npm run receipts:append -- --amount 10 --r¶»§q«^
+npm run receipts:append -- --amount 10 --recipient Alex --reason "local test receipt"
+```
+
+Check the full chain:
+
+```bash
+npm run receipts:verify
+```
+
+A valid chain prints `VALID Â· N entries`. A failed check prints `BROKEN Â· first broken entry: N` and exits non-zero. The verifier stops at the first malformed, altered, misnumbered, or incorrectly linked entry. It refuses to append to a broken chain.
+
+For isolated tests, pass a separate file path:
+
+```bash
+node scripts/receipts.mjs append --amount 10 --recipient Alex --reason "isolated" --file /tmp/rails-desk-test.jsonl
+node scripts/receipts.mjs verify --file /tmp/rails-desk-test.jsonl
+```
+
+The test suite uses temporary directories and does not touch `data/receipts.jsonl` or existing browser localStorage data.
+
+## Existing browser receipts
+
+The app does not migrate, clear, or overwrite existing browser receipts as part of the file-log feature. The browser receipt page continues to show its valid/broken chain badge for the localStorage chain. The CLI prints a corresponding valid/broken status for the append-only local file.
+
+## Kane browser acceptance
+
+Kane CLI browser verification is a separate required step. Unit tests are not Kane runs. The seven approved browser flows must be executed in an authenticated Kane environment with Chrome and approved existing credits.
