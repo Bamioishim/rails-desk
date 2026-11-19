@@ -4,6 +4,10 @@ Rails Desk is a control desk for agent-proposed payments. Tests must stay in Dem
 
 Never enter a seed phrase, private key, or payment card. Never click "Connect wallet" or "X Layer testnet", and never send a transaction. Demo-mode transfers are simulated: a mock receipt is not a real payment.
 
-The `/demo` walkthrough is isolated in page memory. It does not call the receipt API, change configured Rails, or persist receipts. The `/xlayer` page may read public TapeOut data on X Layer; that is a read-only lookup, not a payment. The Vercel preview's file-backed receipt store is not durable. Keep tests non-destructive and restore any local browser settings they change.
+`/demo` is a scripted showcase isolated in page memory. "Run all three" plays three agent requests back to back: $8 to Alex (Approved), $15 to Jordan (Needs your OK, waits for the user to click Approve or Refuse), and $12 to Mallory (Blocked, not on the allowlist). Chips "$8 to Alex", "$15 to Jordan" and "$12 to Mallory" play one each. Each request appears as a chat bubble typed out, then three checks appear one at a time (Spending cap, Allowlist, Review limit), then a stamp, then a receipt card with an id like RD-0001-abc123 and a time. Animations take a few seconds; wait for them.
 
-The demo policy (independent of `/rails` settings) is: allowed recipients Alex, Jordan and Sam, plus the TapeOut name `#1@2.254`; maximum 20; review limit 10. In Demo (mock) mode the TapeOut policy circuit label is "Approved" at or below 10, "Needs your OK" above 10 and up to 20, and "Blocked" over the cap or for an unknown recipient. A blocked proposal must use the word "Blocked" everywhere the user sees its outcome: the circuit rule, the referee status pill and the receipt decision. "Refused" is only for a proposal the user manually refuses at review. After a check that needs review, the notice says it needs your OK.
+`/xlayer` hosts the full interactive console under "Do it for real", plus read-only TapeOut lookups on X Layer. In that console's Demo (mock) mode amounts are in USD and the policy is: allowed recipients Alex, Jordan and Sam, plus the TapeOut name `#1@2.254`; maximum 20; review limit 10. The TapeOut policy circuit label is "Approved" at or below 10, "Needs your OK" above 10 and up to 20, and "Blocked" over the cap or for an unknown recipient.
+
+A blocked payment must use the word "Blocked" everywhere the user sees its outcome. "Refused" is only for a payment the user manually refuses at review.
+
+Keep tests non-destructive and restore any local browser settings they change.

@@ -116,7 +116,7 @@ process.on("SIGINT", () => { stopApp(); process.exit(130); });
 // ---------- likely files ----------
 const ROUTE_FILES = {
   "/demo": ["src/app/demo/page.tsx", "src/lib/policy-circuit.ts", "src/lib/demo-config.ts"],
-  "/xlayer": ["src/app/xlayer/page.tsx", "src/lib/tapeout.ts", "src/lib/chains.ts"],
+  "/xlayer": ["src/app/xlayer/page.tsx", "src/components/rails-console.tsx", "src/lib/tapeout.ts", "src/lib/chains.ts"],
   "/rails": ["src/app/rails/page.tsx", "src/lib/rails.ts"],
   "/receipts": ["src/app/receipts/page.tsx", "src/lib/file-receipts.mjs"],
   "/": ["src/app/page.tsx", "src/components/landing.tsx"],

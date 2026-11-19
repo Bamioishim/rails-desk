@@ -6,6 +6,7 @@ import { verifyAnchor } from "@/lib/xlayer-wallet";
 import { addressUrl, txUrl, xLayer, xLayerTestnet, XLAYER_FAUCET_URL } from "@/lib/chains";
 import { allowedTapeNames } from "@/lib/demo-config";
 import { loadOnchainReceipts, type OnchainReceipt } from "@/lib/onchain-receipts";
+import RailsConsole from "@/components/rails-console";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
@@ -58,6 +59,11 @@ export default function XLayerPage() {
       <div className="stat-card"><div className="stat-label">Policy circuit</div><div className="stat-value">{POLICY_GATE_COUNT}</div><div className="stat-foot">NAND gates · {POLICY_N_IN} inputs · {POLICY_N_OUT} outputs</div></div>
       <div className="stat-card"><div className="stat-label">Onchain receipts</div><div className="stat-value">{receipts.length}</div><div className="stat-foot">Transfers on X Layer testnet ({xLayerTestnet.id})</div></div>
     </div>
+
+    <section className="panel xlayer-send" id="send">
+      <div className="section-head"><div><h2 className="panel-title">Do it for real</h2><div className="panel-desc">Connect a wallet, propose a payment, and once the rails approve it, sign a real X Layer testnet transfer. You get the tx hash, with the receipt hash written into the transaction. Test OKB is free from the <a href={XLAYER_FAUCET_URL} target="_blank" rel="noreferrer">faucet</a>.</div></div></div>
+      <RailsConsole embedded />
+    </section>
 
     <div className="panel">
       <div className="section-head"><div><h2 className="panel-title">Policy circuit</h2><div className="panel-desc">The rails (max per action, review limit, allowlist) compiled into a TapeOut netlist. Outputs: approved, needs your OK, blocked.</div></div><span className={policy ? "tag" : "tag red"}>{policy ? "ON X LAYER" : "NOT TAPED OUT YET"}</span></div>
