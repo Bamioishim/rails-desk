@@ -1,0 +1,196 @@
+{
+  "tool": "kane-gate",
+  "kaneCli": "0.10.6",
+  "generatedAt": "2026-11-19T23:23:44.876Z",
+  "commit": "7b8bdd7",
+  "srcDirty": false,
+  "status": "passed",
+  "baseUrl": "http://127.0.0.1:3100",
+  "executionId": "926b6d35-71c1-4b9d-8dca-902850da6c6d",
+  "kaneExitCode": 0,
+  "credits": {
+    "before": 898.9827,
+    "after": 819.5047
+  },
+  "members": [
+    {
+      "test": "tests/kane/demo-allowlist_test.md",
+      "title": "Demo allowlist blocks an unknown recipient",
+      "route": "/demo",
+      "status": "passed",
+      "durationS": 50,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1R38ACP7QX0FBP05EPTBT/dashboard/share/US_MKPY4F3RDX1KPJP5DSO5D3VUNYVKVCHY7D2M8PSM7YALPL679YA60TYV7OB7254E?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "d8d33ad2-3304-4530-bb1a-260b429c8692",
+      "objective": "## Submit a recipient outside the allowlist\nStay in \"Demo (mock)\" mode. Do not click Connect wallet. Set the \"Recipient\" field to Mallory and keep the amount at 12. Click \"Check against rails\". Verify the page says this recipient is not on the allowed list, the referee status is \"Blocked\", the receipt explains that the recipient is not on the demo allowlist, and there is no \"Approve\" button.",
+      "failingStep": null,
+      "kaneDiagnosis": null,
+      "kaneSummary": null,
+      "checks": [
+        {
+          "key": "recipient_not_on_allowed_list",
+          "check": "Checking for the recipient allow-list notice",
+          "condition": "the page says this recipient is not on the allowed list",
+          "expected": "the page message that this recipient is not on the allowed list present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "referee_status",
+          "check": "Reading the referee status",
+          "condition": "the referee status is \"Blocked\"",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        },
+        {
+          "key": "receipt_demo_allowlist_explanation",
+          "check": "Checking the receipt allow-list explanation",
+          "condition": "the receipt explains that the recipient is not on the demo allowlist",
+          "expected": "the receipt explanation that the recipient is not on the demo allowlist present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "approve_button",
+          "check": "Checking whether the Approve button is present",
+          "condition": "there is no \"Approve\" button",
+          "expected": "\"Approve\" button absent",
+          "expectedValue": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "likelyFiles": null
+    },
+    {
+      "test": "tests/kane/demo-blocked-wording_test.md",
+      "title": "A blocked payment says \"Blocked\" everywhere",
+      "route": "/demo",
+      "status": "passed",
+      "durationS": 58,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1SX4CRCNXE1CMC5HD2R6K/dashboard/share/US_CFBPIT8W4D2AY6EKGEBKMSG242FVRZTKJJS3E6IYBV0MEK29N5YPB55LOEBNYU7D?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "9d6a0f79-1ba8-4969-83d6-9a2639ef36a2",
+      "objective": "## Block an unknown recipient and read every status\nStay in \"Demo (mock)\" mode. Do not click Connect wallet. Set the \"Recipient\" field to Mallory and keep the amount at 12. Click \"Check against rails\". The rails must block this proposal, and the user must see one consistent word for it. Verify all of these: the TapeOut policy circuit rule says \"Blocked\"; the status pill next to the \"Referee decision\" heading says exactly \"Blocked\" (not \"Refused\" or any other word); the receipt's decision line says \"Blocked\"; and there is no \"Approve\" button.",
+      "failingStep": null,
+      "kaneDiagnosis": null,
+      "kaneSummary": null,
+      "checks": [
+        {
+          "key": "rails_block_proposal",
+          "check": "Checking whether the proposal is blocked by the rails",
+          "condition": "The rails block this proposal.",
+          "expected": "the proposal blocked by the rails present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "consistent_blocked_decision_word",
+          "check": "Checking the consistency of the blocked decision word",
+          "condition": "The user sees one consistent word for the blocked proposal decision.",
+          "expected": "one consistent word for the blocked proposal decision present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "tapeout_policy_circuit_rule",
+          "check": "Reading the TapeOut policy circuit decision",
+          "condition": "The TapeOut policy circuit rule says \"Blocked\".",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        },
+        {
+          "key": "referee_decision_status_pill",
+          "check": "Reading the Referee decision status pill",
+          "condition": "The status pill next to the \"Referee decision\" heading says exactly \"Blocked\" (not \"Refused\" or any other word).",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        },
+        {
+          "key": "receipt_decision_line",
+          "check": "Reading the receipt decision line",
+          "condition": "The receipt's decision line says \"Blocked\".",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        },
+        {
+          "key": "approve_button_visible",
+          "check": "Checking whether the Approve button is present",
+          "condition": "There is no \"Approve\" button.",
+          "expected": "the \"Approve\" button absent",
+          "expectedValue": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "likelyFiles": null
+    },
+    {
+      "test": "tests/kane/demo-circuit-labels_test.md",
+      "title": "Policy circuit shows Approved, Needs your OK, and Blocked",
+      "route": "/demo",
+      "status": "passed",
+      "durationS": 85,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1W1D2J5HV8QDSZCPTJDBD/dashboard/share/US_7IY0PPNL02PAQGUC8VDB8GGHYQDVUVN0GCDTXMO5KEV8BPZW85C1U0CEUCUTJRYQ?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "55371ed1-6c0c-42c2-8ae0-a7a2d73ab50c",
+      "objective": "## Change the amount and recipient in demo mode\nStay in \"Demo (mock)\" mode. Do not click Connect wallet. With the default recipient Alex and amount 12, verify the TapeOut policy circuit rule says \"Needs your OK\". Change the amount to 5 and verify the circuit rule says \"Approved\". Change the amount to 21 and verify the circuit rule says \"Blocked\". Set the amount back to 12, change the recipient to Mallory, and verify the circuit rule says \"Blocked\".",
+      "failingStep": null,
+      "kaneDiagnosis": null,
+      "kaneSummary": null,
+      "checks": [
+        {
+          "key": "tapeout_rule_needs_your_ok",
+          "check": "Reading the TapeOut policy circuit rule verdict",
+          "condition": "With the default recipient Alex and amount 12, the TapeOut policy circuit rule says \"Needs your OK\".",
+          "expected": "Needs your OK",
+          "expectedValue": "Needs your OK",
+          "actual": "Needs your OK",
+          "passed": true
+        },
+        {
+          "key": "tapeout_rule_approved",
+          "check": "Reading the TapeOut policy circuit rule status",
+          "condition": "The TapeOut policy circuit rule says \"Approved\".",
+          "expected": "Approved",
+          "expectedValue": "Approved",
+          "actual": "Approved",
+          "passed": true
+        },
+        {
+          "key": "tapeout_rule_blocked_amount_21",
+          "check": "Reading the TapeOut policy circuit rule status",
+          "condition": "The TapeOut policy circuit rule says \"Blocked\".",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        },
+        {
+          "key": "tapeout_rule_blocked_mallory",
+          "check": "Reading the TapeOut policy circuit verdict",
+          "condition": "The TapeOut policy circuit rule says \"Blocked\".",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        }
+      ],
+      "likelyFiles": null
+    }
+  ],
+  "totals": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}
