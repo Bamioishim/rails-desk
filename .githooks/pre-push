@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Kane pre-push gate. Enable with `npm run hooks:install`.
+# Blocks the push when Kane CLI finds a failing browser flow; read KANE_REPORT.md and fix.
+# Skip once with KANE_SKIP=1 git push (for docs-only pushes). Missing credentials skip with a notice.
+set -euo pipefail
+if [[ "${KANE_SKIP:-}" == "1" ]]; then echo "[pre-push] KANE_SKIP=1: Kane gate skipped." >&2; exit 0; fi
+cd "$(git rev-parse --show-toplevel)"
+if ! node scripts/kane-gate.mjs --skip-if-no-creds; then
+  echo "" >&2
+  echo "[pre-push] Kane gate FAILED. Push blocked. Read KANE_REPORT.md, fix, run npm run kane:gate until it passes." >&2
+  exit 1
+fi

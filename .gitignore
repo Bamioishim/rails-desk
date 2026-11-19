@@ -9,3 +9,12 @@ coverage/
 *.log
 .DS_Store
 data/*.jsonl
+*.tsbuildinfo
+
+# Kane / LambdaTest local evidence (never commit credentials or run artifacts)
+.testmuai/evidence/
+kane-out/
+tests/kane/output-*/
+
+# Kane gate: raw run streams stay local; KANE_REPORT.md and .kane/last-report.json are committed evidence
+.kane/runs/
