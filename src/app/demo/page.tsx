@@ -50,31 +50,56 @@ export default function GuidedDemoPage(){
  const execute=()=>{setReceipt({recipient,amount:Number(amount),decision:"Executed (mock)",reason:"Manually completed in the isolated demo."});setStage("complete");setNote("Recorded in this demo page only. No funds moved and no persistent receipt was written.");};
  const refuse=()=>{setStage("refused");setReceipt({recipient,amount:Number(amount),decision:"Refused",reason:"Manually refused in the isolated demo."});setNote("Refusal shown in the walkthrough only. Nothing was sent.");};
 
- return <div className="guided-demo">
-  <div className="page-head"><div><div className="eyebrow">INTERACTIVE WALKTHROUGH / 01</div><h1 className="page-title">See the rails in action.</h1><p className="page-sub">A guided run through the same proposal, policy and decision pattern. You can take over at any point.</p></div><Link href="/propose" className="button ghost">← Exit demo</Link></div>
-  <div className="demo-toolbar"><div><span className="tag">ISOLATED DEMO</span><span className="demo-toolbar-copy">No shared policy or receipt data is changed.</span></div><div className="action-row" style={{marginTop:0}}><button className="button button-small" onClick={()=>void play()} disabled={auto}>▶ {auto?"Playing":"Play walkthrough"}</button><button className="button ghost button-small" onClick={takeControl} disabled={!auto}>Take control</button><button className="button ghost button-small" onClick={reset}>Restart</button></div></div>
-  <div className="demo-progress" aria-label="Walkthrough progress"><span className={stage!=="idle"?"done":""}>01 · Propose</span><i/><span className={["approved","refused","complete"].includes(stage)?"done":stage==="review"?"current":""}>02 · Check</span><i/><span className={stage==="complete"||stage==="refused"?"done":""}>03 · Record</span></div>
-  <div className="layout-grid demo-grid">
-   <section className="panel">
-    <div className="section-head"><div><h2 className="panel-title">Control room</h2><div className="panel-desc">An agent is asking to make a mock transfer.</div></div><span className="tag">RULES ACTIVE</span></div>
-    <div className="field"><label htmlFor="demo-recipient">Recipient</label><input id="demo-recipient" value={recipient} onChange={e=>setRecipient(e.target.value)} disabled={auto}/><span className="hint">Allowed recipients in this walkthrough: Alex, Jordan and Sam.</span></div>
-    <div className="field"><label htmlFor="demo-amount">Amount · demo credits</label><input id="demo-amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} disabled={auto}/><span className="hint">Maximum per action: 20 credits.</span></div>
-    <div className="field"><label htmlFor="demo-reason">What the agent wants to do</label><textarea id="demo-reason" value={reason} onChange={e=>setReason(e.target.value)} disabled={auto}/></div>
-    <div className="action-row">
-     <button className="button" onClick={submit} disabled={auto||stage==="approved"||stage==="complete"}>Check against rails</button>
-     {stage==="review"&&<><button className="button" onClick={approve} disabled={auto}>Approve</button><button className="button danger" onClick={refuse} disabled={auto}>Refuse</button></>}
-     {stage==="approved"&&<><button className="button" onClick={execute} disabled={auto}>Execute mock transfer</button><button className="button danger" onClick={refuse} disabled={auto}>Cancel instead</button></>}
+ return <div className="reference-home demo-home">
+  <header className="ref-nav">
+   <div className="ref-wrap ref-nav-in">
+    <Link className="ref-brand" href="/"><img src="/rails-desk-mark.svg" alt=""/>rails desk</Link>
+    <nav className="ref-links">
+     <Link href="/#about">About</Link><Link href="/#features">Features</Link><Link href="/#how">How it works</Link><Link href="/#questions">Questions</Link>
+    </nav>
+    <Link className="ref-btn ref-primary ref-nav-btn" href="/demo">Play the demo</Link>
+   </div>
+  </header>
+  <main className="demo-wrap">
+   <div className="demo-head">
+    <div><p className="demo-eyebrow">Interactive walkthrough</p><h1 className="demo-title">See the rails in action.</h1><p className="demo-lead">A guided run through the same proposal, policy and decision pattern. You can take over at any point.</p></div>
+    <Link href="/propose" className="ref-btn ref-secondary">Exit demo</Link>
+   </div>
+   <div className="demo-toolbar">
+    <div><span className="demo-pill">Isolated demo</span><span className="demo-toolbar-copy">No shared policy or receipt data is changed.</span></div>
+    <div className="demo-actions">
+     <button className="ref-btn ref-primary" onClick={()=>void play()} disabled={auto}>{auto?"Playing":"Play walkthrough"}</button>
+     <button className="ref-btn ref-secondary" onClick={takeControl} disabled={!auto}>Take control</button>
+     <button className="ref-btn ref-secondary" onClick={reset}>Restart</button>
     </div>
-   </section>
-   <aside className="panel">
-    <div className="section-head"><div><h2 className="panel-title">Referee decision</h2><div className="panel-desc">Deterministic checks, not an agent's opinion.</div></div><span className={stage==="refused"?"tag red":"tag"}>{stage==="idle"||stage==="typing"?"WAITING":stage==="review"?"REVIEW":stage==="approved"?"APPROVED":stage==="refused"?"REFUSED":"COMPLETE"}</span></div>
-    <div className={stage==="refused"?"notice warn":"notice"}>{note}</div>
-    <div className="rule-row"><span className="rule-icon">01</span><div><strong>Spending cap</strong><p>{Number(amount)>0&&Number(amount)<=20? "Amount is within the 20-credit maximum.":"Amount must be positive and no more than 20 credits."}</p></div></div>
-    <div className="rule-row"><span className="rule-icon">02</span><div><strong>Recipient allowlist</strong><p>{["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}</p></div></div>
-    <div className="rule-row"><span className="rule-icon">03</span><div><strong>Human control</strong><p>Approval and mock execution are separate steps.</p></div></div>
-    {receipt&&<div className="proposal-card"><div className="receipt-title">{receipt.recipient} · {receipt.amount} credits</div><div className="receipt-meta">{receipt.decision}</div><p style={{marginTop:9}}>{receipt.reason}</p><div className="hash" style={{marginTop:10}}>DEMO RECEIPT · NOT IN PERSISTENT CHAIN</div></div>}
-   </aside>
-  </div>
-  <p className="demo-footnote">This is a safe, self-contained walkthrough. It does not call the receipt API, alter your configured rails, or move funds.</p>
+   </div>
+   <div className="demo-progress" aria-label="Walkthrough progress">
+    <span className={stage!=="idle"?"done":""}>01 Propose</span><i/>
+    <span className={["approved","refused","complete"].includes(stage)?"done":stage==="review"?"current":""}>02 Check</span><i/>
+    <span className={stage==="complete"||stage==="refused"?"done":""}>03 Record</span>
+   </div>
+   <div className="demo-grid">
+    <section className="demo-panel">
+     <div className="demo-section-head"><div><h2>Control room</h2><p>An agent is asking to make a mock transfer.</p></div><span className="demo-pill">Rules active</span></div>
+     <div className="demo-field"><label htmlFor="demo-recipient">Recipient</label><input id="demo-recipient" value={recipient} onChange={e=>setRecipient(e.target.value)} disabled={auto}/><span>Allowed recipients in this walkthrough: Alex, Jordan and Sam.</span></div>
+     <div className="demo-field"><label htmlFor="demo-amount">Amount · demo credits</label><input id="demo-amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} disabled={auto}/><span>Maximum per action: 20 credits.</span></div>
+     <div className="demo-field"><label htmlFor="demo-reason">What the agent wants to do</label><textarea id="demo-reason" value={reason} onChange={e=>setReason(e.target.value)} disabled={auto}/></div>
+     <div className="demo-actions demo-submit">
+      <button className="ref-btn ref-primary" onClick={submit} disabled={auto||stage==="approved"||stage==="complete"}>Check against rails</button>
+      {stage==="review"&&<><button className="ref-btn ref-primary" onClick={approve} disabled={auto}>Approve</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={auto}>Refuse</button></>}
+      {stage==="approved"&&<><button className="ref-btn ref-primary" onClick={execute} disabled={auto}>Execute mock transfer</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={auto}>Cancel instead</button></>}
+     </div>
+    </section>
+    <aside className="demo-panel">
+     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent's opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="refused"?"Refused":"Complete"}</span></div>
+     <div className="demo-notice">{note}</div>
+     <div className="demo-rule"><span>01</span><div><strong>Spending cap</strong><p>{Number(amount)>0&&Number(amount)<=20? "Amount is within the 20-credit maximum.":"Amount must be positive and no more than 20 credits."}</p></div></div>
+     <div className="demo-rule"><span>02</span><div><strong>Recipient allowlist</strong><p>{["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}</p></div></div>
+     <div className="demo-rule"><span>03</span><div><strong>Human control</strong><p>Approval and mock execution are separate steps.</p></div></div>
+     {receipt&&<div className="demo-receipt"><div className="demo-receipt-title">{receipt.recipient} · {receipt.amount} credits</div><div className="demo-receipt-meta">{receipt.decision}</div><p>{receipt.reason}</p><div className="demo-hash">Demo receipt · Not in persistent chain</div></div>}
+    </aside>
+   </div>
+   <p className="demo-footnote">This is a safe, self-contained walkthrough. It does not call the receipt API, alter your configured rails, or move funds.</p>
+  </main>
  </div>;
 }
