@@ -50,29 +50,3 @@
 .reference-home .ref-about .ref-badge{margin-bottom:22px;padding:6px 16px 6px 6px}
 .reference-home .ref-about-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 @media(max-width:560px){.reference-home .ref-about{padding:44px 20px}.reference-home .ref-about p{font-size:16px}}
-
-
-/* Guided demo uses the current proposal workspace visual language. */
-.demo-sidebar-note{margin-top:18px;padding:10px 9px;border:1px solid #eaded2;border-radius:8px;background:#fffaf4;color:#9a887b;font-size:8px;line-height:1.55}
-.demo-form{margin-top:17px;padding-top:16px;border-top:1px solid #f0e8e0}
-.demo-form .field{margin-bottom:13px}
-.demo-form .field textarea{min-height:76px}
-.demo-result{margin:22px auto 0;max-width:760px;padding:23px;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 28px #4c2c1710}
-.demo-result-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.demo-result-head .section-eyebrow{margin-bottom:6px}
-.demo-result-head h2{margin:0;color:var(--brown);font-size:22px;font-weight:500;letter-spacing:-.5px}
-.demo-result-copy{font-size:11px;line-height:1.65;color:var(--muted);margin:15px 0 0}
-.demo-receipt{margin-top:15px;padding:15px;border:1px solid #d8e9dc;border-radius:11px;background:#f0f6f0}
-.demo-receipt>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.demo-receipt strong{font-size:12px;color:var(--brown)}
-.demo-receipt span{font-size:10px;font-weight:700;color:#47765a}
-.demo-receipt p{margin:8px 0;font-size:11px;color:#6e7d70}
-.demo-receipt small{font:9px ui-monospace,monospace;color:#8c9a8e;letter-spacing:.5px}
-.demo-policy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-.demo-policy-grid>div{display:flex;flex-direction:column;gap:7px;padding:13px;border:1px solid var(--line);border-radius:10px;background:#fffaf4}
-.demo-policy-grid b{font:11px ui-monospace,monospace;color:#d69a7e}
-.demo-policy-grid strong{font-size:11px;color:var(--brown)}
-.demo-policy-grid span{font-size:9px;color:var(--muted);line-height:1.45}
-.demo-policy-grid .policy-pass{color:#47765a}
-.demo-policy-grid .policy-fail{color:var(--red)}
-@media(max-width:560px){.demo-result{padding:17px}.demo-policy-grid{grid-template-columns:1fr}.demo-receipt>div{align-items:flex-start;flex-direction:column;gap:5px}.demo-sidebar-note{font-size:7px}}
