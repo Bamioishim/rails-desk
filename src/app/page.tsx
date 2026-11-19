@@ -1,2 +1,2 @@
-import {redirect} from "next/navigation";
-export default function Home(){redirect("/propose")}
+import LandingPage from "@/components/landing";
+export default function Home(){return <LandingPage/>}
