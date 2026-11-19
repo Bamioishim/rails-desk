@@ -5,6 +5,7 @@ import {usePathname} from "next/navigation";
 const links=[["/propose","Overview"],["/rails","Rails"],["/receipts","Receipts"],["/about","About"]];
 export function Shell({children}:{children:React.ReactNode}){
  const path=usePathname();
+ if(path==="/") return <>{children}</>;
  return <div className="site-shell">
   <div className="announcement"><span>RAILS DESK</span><span className="announcement-copy">A clear control layer for agent actions</span><span className="announcement-dot"/></div>
   <header className="site-header">
