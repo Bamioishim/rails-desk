@@ -1,133 +1,169 @@
 {
   "tool": "kane-gate",
   "kaneCli": "0.10.6",
-  "generatedAt": "2026-11-19T23:23:44.876Z",
-  "commit": "7b8bdd7",
+  "generatedAt": "2026-11-19T23:42:35.221Z",
+  "commit": "df4b319",
   "srcDirty": false,
   "status": "passed",
   "baseUrl": "http://127.0.0.1:3100",
-  "executionId": "926b6d35-71c1-4b9d-8dca-902850da6c6d",
+  "executionId": "f8d5dbbf-afe4-4414-8e99-7a8f632d3a4a",
   "kaneExitCode": 0,
   "credits": {
-    "before": 898.9827,
-    "after": 819.5047
+    "before": 819.5047,
+    "after": 663.2329
   },
   "members": [
-    {
-      "test": "tests/kane/demo-allowlist_test.md",
-      "title": "Demo allowlist blocks an unknown recipient",
-      "route": "/demo",
-      "status": "passed",
-      "durationS": 50,
-      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1R38ACP7QX0FBP05EPTBT/dashboard/share/US_MKPY4F3RDX1KPJP5DSO5D3VUNYVKVCHY7D2M8PSM7YALPL679YA60TYV7OB7254E?type=summary&agentView=true&fqdn=summary-page",
-      "sessionId": "d8d33ad2-3304-4530-bb1a-260b429c8692",
-      "objective": "## Submit a recipient outside the allowlist\nStay in \"Demo (mock)\" mode. Do not click Connect wallet. Set the \"Recipient\" field to Mallory and keep the amount at 12. Click \"Check against rails\". Verify the page says this recipient is not on the allowed list, the referee status is \"Blocked\", the receipt explains that the recipient is not on the demo allowlist, and there is no \"Approve\" button.",
-      "failingStep": null,
-      "kaneDiagnosis": null,
-      "kaneSummary": null,
-      "checks": [
-        {
-          "key": "recipient_not_on_allowed_list",
-          "check": "Checking for the recipient allow-list notice",
-          "condition": "the page says this recipient is not on the allowed list",
-          "expected": "the page message that this recipient is not on the allowed list present",
-          "expectedValue": "true",
-          "actual": "true",
-          "passed": true
-        },
-        {
-          "key": "referee_status",
-          "check": "Reading the referee status",
-          "condition": "the referee status is \"Blocked\"",
-          "expected": "Blocked",
-          "expectedValue": "Blocked",
-          "actual": "Blocked",
-          "passed": true
-        },
-        {
-          "key": "receipt_demo_allowlist_explanation",
-          "check": "Checking the receipt allow-list explanation",
-          "condition": "the receipt explains that the recipient is not on the demo allowlist",
-          "expected": "the receipt explanation that the recipient is not on the demo allowlist present",
-          "expectedValue": "true",
-          "actual": "true",
-          "passed": true
-        },
-        {
-          "key": "approve_button",
-          "check": "Checking whether the Approve button is present",
-          "condition": "there is no \"Approve\" button",
-          "expected": "\"Approve\" button absent",
-          "expectedValue": "false",
-          "actual": "false",
-          "passed": true
-        }
-      ],
-      "likelyFiles": null
-    },
     {
       "test": "tests/kane/demo-blocked-wording_test.md",
       "title": "A blocked payment says \"Blocked\" everywhere",
       "route": "/demo",
       "status": "passed",
-      "durationS": 58,
-      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1SX4CRCNXE1CMC5HD2R6K/dashboard/share/US_CFBPIT8W4D2AY6EKGEBKMSG242FVRZTKJJS3E6IYBV0MEK29N5YPB55LOEBNYU7D?type=summary&agentView=true&fqdn=summary-page",
-      "sessionId": "9d6a0f79-1ba8-4969-83d6-9a2639ef36a2",
-      "objective": "## Block an unknown recipient and read every status\nStay in \"Demo (mock)\" mode. Do not click Connect wallet. Set the \"Recipient\" field to Mallory and keep the amount at 12. Click \"Check against rails\". The rails must block this proposal, and the user must see one consistent word for it. Verify all of these: the TapeOut policy circuit rule says \"Blocked\"; the status pill next to the \"Referee decision\" heading says exactly \"Blocked\" (not \"Refused\" or any other word); the receipt's decision line says \"Blocked\"; and there is no \"Approve\" button.",
+      "durationS": 65,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V2NJQ5FXSWW3GV5NRG0FAV/dashboard/share/US_M0FKKSPO8XL1VG1WKNRPXE9X6CVMHOYPPACMONXUJLAALOJE9B9TFIM6WJ4D6U9O?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "9e61e893-201a-4e50-9739-bd3ee1371b38",
+      "objective": "## Block an unknown recipient and read every status\nClick the \"$12 to Mallory\" chip. Wait for the agent's chat bubble to finish and for the outcome stamp to appear. The rails must block this payment, and the user must see one consistent word for it. Verify all of these: the \"Allowlist\" check is marked as failed and says \"Mallory is not on your allowlist\"; the stamp says exactly \"Blocked\" (not \"Refused\" or any other word); the new receipt for \"Mallory · $12\" says \"Blocked\"; the word \"Refused\" appears nowhere on the page; and there is no \"Approve\" button.",
       "failingStep": null,
       "kaneDiagnosis": null,
       "kaneSummary": null,
       "checks": [
         {
-          "key": "rails_block_proposal",
-          "check": "Checking whether the proposal is blocked by the rails",
-          "condition": "The rails block this proposal.",
-          "expected": "the proposal blocked by the rails present",
+          "key": "allowlist_check_failed",
+          "check": "Checking whether the Allowlist rail check failed",
+          "condition": "the \"Allowlist\" check is marked as failed",
+          "expected": "the \"Allowlist\" check failed present",
           "expectedValue": "true",
           "actual": "true",
           "passed": true
         },
         {
-          "key": "consistent_blocked_decision_word",
-          "check": "Checking the consistency of the blocked decision word",
-          "condition": "The user sees one consistent word for the blocked proposal decision.",
-          "expected": "one consistent word for the blocked proposal decision present",
-          "expectedValue": "true",
-          "actual": "true",
-          "passed": true
-        },
-        {
-          "key": "tapeout_policy_circuit_rule",
-          "check": "Reading the TapeOut policy circuit decision",
-          "condition": "The TapeOut policy circuit rule says \"Blocked\".",
+          "key": "outcome_stamp_text",
+          "check": "Reading the Rails outcome stamp",
+          "condition": "the stamp says exactly \"Blocked\"",
           "expected": "Blocked",
           "expectedValue": "Blocked",
           "actual": "Blocked",
           "passed": true
         },
         {
-          "key": "referee_decision_status_pill",
-          "check": "Reading the Referee decision status pill",
-          "condition": "The status pill next to the \"Referee decision\" heading says exactly \"Blocked\" (not \"Refused\" or any other word).",
+          "key": "mallory_receipt_status",
+          "check": "Reading the Mallory receipt status",
+          "condition": "the new receipt for \"Mallory · $12\" says \"Blocked\"",
           "expected": "Blocked",
           "expectedValue": "Blocked",
           "actual": "Blocked",
           "passed": true
         },
         {
-          "key": "receipt_decision_line",
-          "check": "Reading the receipt decision line",
-          "condition": "The receipt's decision line says \"Blocked\".",
-          "expected": "Blocked",
-          "expectedValue": "Blocked",
-          "actual": "Blocked",
+          "key": "refused_word_absent",
+          "check": "Checking whether the word Refused is present",
+          "condition": "the word \"Refused\" appears nowhere on the page",
+          "expected": "the word \"Refused\" on the page absent",
+          "expectedValue": "false",
+          "actual": "false",
           "passed": true
         },
         {
-          "key": "approve_button_visible",
-          "check": "Checking whether the Approve button is present",
-          "condition": "There is no \"Approve\" button.",
+          "key": "approve_button_absent",
+          "check": "Checking whether an Approve button is present",
+          "condition": "there is no \"Approve\" button",
           "expected": "the \"Approve\" button absent",
+          "expectedValue": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "key": "allowlist_check_message",
+          "check": "Reading the Allowlist check message",
+          "condition": "the \"Allowlist\" check says \"Mallory is not on your allowlist\"",
+          "expected": "Mallory is not on your allowlist",
+          "expectedValue": "Mallory is not on your allowlist",
+          "actual": "Mallory is not on your allowlist",
+          "passed": true
+        }
+      ],
+      "likelyFiles": null
+    },
+    {
+      "test": "tests/kane/demo-review-refuse_test.md",
+      "title": "Over the review limit waits for a human, who can refuse",
+      "route": "/demo",
+      "status": "passed",
+      "durationS": 77,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V2QXFCWXEQSJ1D1NE7MQVZ/dashboard/share/US_YCT68NEMYS1POKX45U3X3KG8QXMPX4HBIOUDUTJNWPH6T5OSGHP9LT1NT8NETLP2?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "0efa01df-c7a1-44f4-bcf3-df853d56eba0",
+      "objective": "## Refuse a payment that needs your OK\nClick the \"$15 to Jordan\" chip. Wait until the \"Review limit\" check says $15 is over $10 and needs a human, and the stamp says \"Needs your OK\". Verify no receipt has been printed yet for Jordan while the \"Approve\" and \"Refuse\" buttons are shown. Click \"Refuse\". Verify a receipt for \"Jordan · $15\" appears saying \"Refused by you\", with an id starting with \"RD-\", and that the Approve and Refuse buttons are gone.",
+      "failingStep": null,
+      "kaneDiagnosis": null,
+      "kaneSummary": null,
+      "checks": [
+        {
+          "key": "jordan_receipt_not_printed",
+          "check": "Checking whether a receipt for Jordan is present",
+          "condition": "No receipt has been printed yet for Jordan.",
+          "expected": "receipt printed for Jordan absent",
+          "expectedValue": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "key": "approve_button_shown",
+          "check": "Checking whether the Approve button is present",
+          "condition": "The \"Approve\" button is shown.",
+          "expected": "the \"Approve\" button present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "refuse_button_shown",
+          "check": "Checking whether the Refuse button is present",
+          "condition": "The \"Refuse\" button is shown.",
+          "expected": "the \"Refuse\" button present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "jordan_15_receipt_appears",
+          "check": "Checking whether the Jordan $15 receipt is present",
+          "condition": "A receipt for \"Jordan · $15\" appears.",
+          "expected": "receipt for \"Jordan · $15\" present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "jordan_15_receipt_refused_by_you",
+          "check": "Checking the Jordan $15 receipt status",
+          "condition": "The receipt for \"Jordan · $15\" says \"Refused by you\".",
+          "expected": "receipt text \"Refused by you\" for \"Jordan · $15\" present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "jordan_15_receipt_id",
+          "check": "Reading the Jordan $15 receipt identifier",
+          "condition": "The receipt for \"Jordan · $15\" has an id starting with \"RD-\".",
+          "expected": "RD-",
+          "expectedValue": "RD-",
+          "actual": "RD-",
+          "passed": true
+        },
+        {
+          "key": "approve_button_gone",
+          "check": "Checking whether the Approve button is present",
+          "condition": "The Approve button is gone.",
+          "expected": "the Approve button absent",
+          "expectedValue": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "key": "refuse_button_gone",
+          "check": "Checking whether the Refuse button is present",
+          "condition": "The Refuse button is gone.",
+          "expected": "the Refuse button absent",
           "expectedValue": "false",
           "actual": "false",
           "passed": true
@@ -136,25 +172,167 @@
       "likelyFiles": null
     },
     {
-      "test": "tests/kane/demo-circuit-labels_test.md",
-      "title": "Policy circuit shows Approved, Needs your OK, and Blocked",
+      "test": "tests/kane/demo-run-all_test.md",
+      "title": "Run all three shows Approved, Needs your OK, and Blocked",
       "route": "/demo",
       "status": "passed",
-      "durationS": 85,
-      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V1W1D2J5HV8QDSZCPTJDBD/dashboard/share/US_7IY0PPNL02PAQGUC8VDB8GGHYQDVUVN0GCDTXMO5KEV8BPZW85C1U0CEUCUTJRYQ?type=summary&agentView=true&fqdn=summary-page",
-      "sessionId": "55371ed1-6c0c-42c2-8ae0-a7a2d73ab50c",
-      "objective": "## Change the amount and recipient in demo mode\nStay in \"Demo (mock)\" mode. Do not click Connect wallet. With the default recipient Alex and amount 12, verify the TapeOut policy circuit rule says \"Needs your OK\". Change the amount to 5 and verify the circuit rule says \"Approved\". Change the amount to 21 and verify the circuit rule says \"Blocked\". Set the amount back to 12, change the recipient to Mallory, and verify the circuit rule says \"Blocked\".",
+      "durationS": 115,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V2TJTPER97QECNTQCSMWZS/dashboard/share/US_MQ9Y96KUJ3PHJE895YTIBCVLQTMEDWEHUYBN2ZQA2V2YFCA6EEURQASLP1B77AIU?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "53218296-e5ea-45ad-9705-be7e7a23cd6e",
+      "objective": "## Play every outcome back to back\nVerify the page heading says \"See the rails in action.\" Click \"Run all three\". First the agent's chat bubble asks to pay Alex $8; wait for the stamp, verify it says \"Approved\", and verify the three checks (Spending cap, Allowlist, Review limit) appeared. Next the bubble asks to pay Jordan $15; wait until the stamp says \"Needs your OK\" and an \"Approve\" button appears, then click \"Approve\". Next the bubble asks to pay Mallory $12; wait until the stamp says \"Blocked\". Verify the Receipts section now shows three receipts, each with an id starting with \"RD-\" and a time: \"Mallory · $12\" with \"Blocked\", \"Jordan · $15\" with \"Approved by you\", and \"Alex · $8\" with \"Approved\". Verify there is a \"Now do it for real on X Layer\" link.",
+      "failingStep": null,
+      "kaneDiagnosis": null,
+      "kaneSummary": null,
+      "checks": [
+        {
+          "key": "page_heading_check",
+          "check": "Reading the page heading",
+          "condition": "the page heading says \"See the rails in action.\"",
+          "expected": "See the rails in action.",
+          "expectedValue": "See the rails in action.",
+          "actual": "See the rails in action.",
+          "passed": true
+        },
+        {
+          "key": "alex_stamp_check",
+          "check": "Reading the decision stamp on Alex's receipt",
+          "condition": "the stamp says \"Approved\"",
+          "expected": "Approved",
+          "expectedValue": "Approved",
+          "actual": "Approved",
+          "passed": true
+        },
+        {
+          "key": "spending_cap_appeared",
+          "check": "Checking whether the Spending cap rule is present",
+          "condition": "Spending cap appeared",
+          "expected": "Spending cap present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "allowlist_appeared",
+          "check": "Checking whether the Allowlist rule is present",
+          "condition": "Allowlist appeared",
+          "expected": "Allowlist present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "review_limit_appeared",
+          "check": "Checking whether the Review limit rule is present",
+          "condition": "Review limit appeared",
+          "expected": "Review limit present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "jordan_stamp_check",
+          "check": "Reading Jordan's outcome stamp",
+          "condition": "the stamp says \"Needs your OK\"",
+          "expected": "Needs your OK",
+          "expectedValue": "Needs your OK",
+          "actual": "Needs your OK",
+          "passed": true
+        },
+        {
+          "key": "approve_button_appeared",
+          "check": "Checking whether the Approve button is present",
+          "condition": "an \"Approve\" button appears",
+          "expected": "an \"Approve\" button present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "mallory_stamp_check",
+          "check": "Reading the Rails outcome stamp",
+          "condition": "the stamp says \"Blocked\"",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        },
+        {
+          "key": "receipts_count_check",
+          "check": "Counting receipts in the Receipts section",
+          "condition": "the Receipts section now shows three receipts",
+          "expected": "3",
+          "expectedValue": "3",
+          "actual": "3",
+          "passed": true
+        },
+        {
+          "key": "receipt_id_and_time_check",
+          "check": "Checking receipt identifiers and times",
+          "condition": "each receipt has an id starting with \"RD-\" and a time",
+          "expected": "true",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "mallory_receipt_check",
+          "check": "Checking the Mallory receipt status",
+          "condition": "the receipt \"Mallory · $12\" has \"Blocked\"",
+          "expected": "true",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "jordan_receipt_check",
+          "check": "Checking the Jordan receipt status",
+          "condition": "the receipt \"Jordan · $15\" has \"Approved by you\"",
+          "expected": "true",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "alex_receipt_check",
+          "check": "Checking the Alex receipt status",
+          "condition": "the receipt \"Alex · $8\" has \"Approved\"",
+          "expected": "true",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "x_layer_link_present",
+          "check": "Checking whether the X Layer link is present",
+          "condition": "there is a \"Now do it for real on X Layer\" link",
+          "expected": "a \"Now do it for real on X Layer\" link present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "likelyFiles": null
+    },
+    {
+      "test": "tests/kane/xlayer-console-circuit-labels_test.md",
+      "title": "Policy circuit shows Approved, Needs your OK, and Blocked",
+      "route": "/xlayer",
+      "status": "passed",
+      "durationS": 90,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V2YCCNKEY5BWW74ZM0RS8J/dashboard/share/US_463XKBVPESJPA9X4DGA8D5V3B58V007WMF6MYR78I774Z6PDOA459O320GNSEZ2U?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "cfb9c687-8951-4272-a4e3-6cf97207a516",
+      "objective": "## Change the amount and recipient in demo mode\nUse the \"Do it for real\" console on this page. Stay in \"Demo (mock)\" mode. Do not click Connect wallet. With the default recipient Alex and amount 12, verify the TapeOut policy circuit rule says \"Needs your OK\". Change the amount to 5 and verify the circuit rule says \"Approved\". Change the amount to 21 and verify the circuit rule says \"Blocked\". Set the amount back to 12, change the recipient to Mallory, and verify the circuit rule says \"Blocked\".",
       "failingStep": null,
       "kaneDiagnosis": null,
       "kaneSummary": null,
       "checks": [
         {
           "key": "tapeout_rule_needs_your_ok",
-          "check": "Reading the TapeOut policy circuit rule verdict",
-          "condition": "With the default recipient Alex and amount 12, the TapeOut policy circuit rule says \"Needs your OK\".",
+          "check": "Reading the TapeOut policy circuit decision",
+          "condition": "The TapeOut policy circuit rule says \"Needs your OK\" for the default recipient Alex and amount 12.",
           "expected": "Needs your OK",
           "expectedValue": "Needs your OK",
-          "actual": "Needs your OK",
+          "actual": "Needs your OK, from a 938-gate NAND circuit in TapeOut's format.",
           "passed": true
         },
         {
@@ -168,7 +346,7 @@
         },
         {
           "key": "tapeout_rule_blocked_amount_21",
-          "check": "Reading the TapeOut policy circuit rule status",
+          "check": "Reading the Blocked policy-circuit verdict",
           "condition": "The TapeOut policy circuit rule says \"Blocked\".",
           "expected": "Blocked",
           "expectedValue": "Blocked",
@@ -189,8 +367,8 @@
     }
   ],
   "totals": {
-    "total": 3,
-    "passed": 3,
+    "total": 4,
+    "passed": 4,
     "failed": 0
   }
 }

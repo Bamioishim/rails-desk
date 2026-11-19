@@ -118,11 +118,9 @@ npm run hooks:install                           # block git push on a red gate
 ```
 
 The committed tests in `tests/kane/` cover:
+- `/demo`: Run all three (Approved, Needs your OK with Approve, Blocked, plus three receipts), consistent "Blocked" wording, and refusing a payment that needs your OK
+- the `/xlayer` "Do it for real" console: circuit labels, allowlist block, review → approve → mock execution
 - the landing-page demo entry
-- the TapeOut policy-circuit labels (Approved / Needs your OK / Blocked)
-- consistent "Blocked" wording
-- a review-and-mock-execution flow
-- an allowlist block
 - the `/xlayer` TapeOut identity lookup
 
 Tests stay in Demo (mock) mode: no wallet connection and no real transfers (see `.testmuai/context.md`). Credentials are read only from the environment and are never printed, logged or committed. The older `npm run test:kane` runner (`scripts/run-kane-tests.sh`, `BASE_URL`, default `http://127.0.0.1:3000`) still works for ad-hoc runs against an app you started yourself.
