@@ -8,20 +8,23 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Kane gate: required after every change (closed loop)
+## Mandatory Kane completion gate
 
-This repo is verified with [Kane CLI](https://www.testmuai.com/kane-cli/). Kane drives a real Chrome through the flows in `tests/kane/*_test.md` and judges them in plain language. Its result is the source of truth for "done".
+Kane verification is an absolute completion requirement for every code, test, configuration, or documentation change in this repository.
 
-After you change anything under `src/`, `tests/kane/` or `.testmuai/`:
+**You are not done until the latest `KANE_REPORT.md` explicitly says `PASS`.**
 
 1. Run `npm test` and `npm run build`.
-2. Run `npm run kane:gate`. It builds the app, starts it on port 3100, runs every Kane test, writes `KANE_REPORT.md` and `.kane/last-report.json`, and exits non-zero on any failure.
-3. If it fails, read `KANE_REPORT.md`. The "Fix request for the coding agent" section is addressed to you: the failing step, expected vs actual values, Kane's diagnosis, the Kane run link, and the files likely involved.
-4. Fix the app (or the test, only if Kane's diagnosis shows the test itself is wrong; never weaken an assertion just to pass), then go back to step 1.
-5. You are done only when `KANE_REPORT.md` says **PASS**. Commit `KANE_REPORT.md` and `.kane/last-report.json` with the change so the history shows the evidence.
+2. Run `npm run kane:gate` after the final change. This is the canonical Kane command. It must generate a fresh `KANE_REPORT.md` and `.kane/last-report.json` for the exact code being evaluated.
+3. Read the complete report. Confirm its generated timestamp is after the final change, its commit matches the checked-out commit, and its result is `PASS`. A report from an earlier commit or earlier code state is stale and does not count.
+4. If the report is missing, stale, incomplete, skipped, or reports `FAIL` or `ERROR`, the task is **not verified**. Fix the cause and rerun the gate.
+5. Never fabricate, edit, reinterpret, or manually mark Kane results as passing. Never weaken a test assertion merely to obtain a pass.
+6. Do not claim completion, describe the change as fully tested, or recommend pushing, merging, or deploying while the latest report is missing, stale, skipped, or red.
+7. If Kane cannot run because credentials, CLI access, browser access, or the environment is unavailable, state that limitation plainly. Leave the task unverified. A skipped run is not a pass.
+8. Run the gate again after any subsequent change. A previously passing report does not validate later edits.
 
-To save credits while iterating, run only the affected tests first (`npm run kane:gate -- --match demo-blocked`), then the full gate before you finish.
+The final rule is absolute: **no current Kane PASS, no completion claim and no push recommendation.**
 
-Guardrails for Kane tests: stay in Demo (mock) mode, never connect a wallet, never enter keys, seed phrases or cards. See `.testmuai/context.md`.
+Kane tests must stay in Demo (mock) mode. Never connect a wallet, enter keys, seed phrases, or card details. See `.testmuai/context.md`.
 
-Credentials: `LT_USERNAME` and `LT_ACCESS_KEY` come from the environment or a gitignored `.env`. Never print, log or commit them.
+Credentials: `LT_USERNAME` and `LT_ACCESS_KEY` come from the environment or a gitignored `.env`. Never print, log, or commit them.
