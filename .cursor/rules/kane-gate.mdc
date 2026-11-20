@@ -1,0 +1,5 @@
+---
+description: Kane CLI closed-loop gate. Run after every code change and fix until green.
+alwaysApply: true
+---
+After changing code in this repo, run `npm run kane:gate`. If it exits non-zero, open `KANE_REPORT.md`, follow its "Fix request for the coding agent" section, fix the app (or the test only when Kane's diagnosis says the test is wrong), and rerun until the report says PASS. Commit `KANE_REPORT.md` and `.kane/last-report.json` with the change. Full rules: AGENTS.md.
