@@ -1,34 +1,52 @@
 {
   "tool": "kane-gate",
   "kaneCli": "0.10.6",
-  "generatedAt": "2026-11-20T00:23:04.669Z",
-  "commit": "537cdfd",
+  "generatedAt": "2026-11-20T00:52:54.764Z",
+  "commit": "6f90b00",
   "srcDirty": false,
   "status": "passed",
   "baseUrl": "http://127.0.0.1:3100",
-  "executionId": "731ace22-3aba-4b80-a9a9-b2727082e24f",
+  "executionId": "ea3a2ba4-07ec-424e-8f9f-31e548db64a7",
   "kaneExitCode": 0,
   "credits": {
-    "before": 459.9724,
-    "after": 422.7721
+    "before": 422.7721,
+    "after": 314.6682
   },
   "members": [
     {
       "test": "tests/kane/demo-walkthrough_test.md",
-      "title": "Play walkthrough runs all three outcomes by itself",
+      "title": "Play walkthrough runs all three outcomes by itself and narrates them",
       "route": "/demo",
       "status": "passed",
-      "durationS": 70,
-      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V594YAP48124F6NGTDSP89/dashboard/share/US_M3YZA9Y1HK6LWXOOV2N3LW6BLI2Y2W99BUG3NQG485GBXRHJYJ6H6128ZDWO95TP?type=summary&agentView=true&fqdn=summary-page",
-      "sessionId": "14c29001-09f0-4a67-85da-6eecf6ccee68",
-      "objective": "## Press play once and watch\nClick \"Play walkthrough\" once and do not click anything else. The walkthrough types each proposal into the form by itself, one after another: Alex for 8 credits, then Jordan for 15 credits, then Mallory for 12 credits.\n\n## The finished walkthrough shows all three outcomes\nWait until the notice says the walkthrough is complete. Verify that the receipts shown on the page now include all three: \"Alex · 8 credits\" saying \"Executed (mock)\", \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK, and \"Mallory · 12 credits\" saying \"Blocked\". Verify the referee status now shows \"Blocked\".",
+      "durationS": 131,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V6TGSDVQKVA0QWVQ1TH436/dashboard/share/US_W8XN2AOG5L3ZPX2VLPT5MHG6YYNMTWNA2B2BJCD5ZX8PY01HDAF9Q93CAJW9YECK?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "e03092f0-a6ea-4e79-b294-ad2372307390",
+      "objective": "## Press play once and watch\nClick \"Play walkthrough\" once and do not click anything else. Verify a step list appears with three steps (Alex · 8 credits, Jordan · 15 credits, Mallory · 12 credits) and a \"Live log\" appears showing timestamped lines from the agent and the referee. The walkthrough types each proposal into the form by itself, one after another.\n\n## The finished walkthrough shows all three outcomes\nWait until the toolbar says \"Walkthrough complete\" and the main button says \"Play again\". Verify all three steps show a check mark with their outcome, the counters show 3 receipts and 1 blocked, and the receipts shown on the page include all three: \"Alex · 8 credits\" saying \"Executed (mock)\", \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK, and \"Mallory · 12 credits\" saying \"Blocked\". Verify the referee status now shows \"Blocked\" and the live log contains a line saying the decision for Mallory was BLOCKED.",
       "failingStep": null,
       "kaneDiagnosis": null,
       "kaneSummary": null,
       "checks": [
         {
-          "key": "alex_8_credits_executed_mock_receipt",
-          "check": "Checking whether the Alex receipt is present",
+          "key": "three_steps_check_marks",
+          "check": "Checking the walkthrough step check marks and outcomes",
+          "condition": "All three steps show a check mark with their outcome.",
+          "expected": "all three steps with a check mark and their outcome present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "receipt_and_blocked_counters",
+          "check": "Reading the receipt and blocked counters",
+          "condition": "The counters show 3 receipts and 1 blocked.",
+          "expected": "3 receipts and 1 blocked",
+          "expectedValue": "3 receipts and 1 blocked",
+          "actual": "3 receipts and 1 blocked",
+          "passed": true
+        },
+        {
+          "key": "alex_receipt",
+          "check": "Checking the Alex receipt status",
           "condition": "The receipts shown on the page include \"Alex · 8 credits\" saying \"Executed (mock)\".",
           "expected": "the receipt \"Alex · 8 credits\" saying \"Executed (mock)\" present",
           "expectedValue": "true",
@@ -36,8 +54,8 @@
           "passed": true
         },
         {
-          "key": "jordan_15_credits_executed_mock_ok_reason_receipt",
-          "check": "Checking whether the Jordan receipt is present",
+          "key": "jordan_receipt_reason",
+          "check": "Checking the Jordan receipt status and reason",
           "condition": "The receipts shown on the page include \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK.",
           "expected": "the receipt \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK present",
           "expectedValue": "true",
@@ -45,8 +63,8 @@
           "passed": true
         },
         {
-          "key": "mallory_12_credits_blocked_receipt",
-          "check": "Checking whether the Mallory receipt is present",
+          "key": "mallory_receipt",
+          "check": "Checking the Mallory receipt status",
           "condition": "The receipts shown on the page include \"Mallory · 12 credits\" saying \"Blocked\".",
           "expected": "the receipt \"Mallory · 12 credits\" saying \"Blocked\" present",
           "expectedValue": "true",
@@ -54,12 +72,55 @@
           "passed": true
         },
         {
-          "key": "referee_status_blocked",
-          "check": "Reading the referee status",
-          "condition": "The referee status shows \"Blocked\".",
-          "expected": "Blocked",
-          "expectedValue": "Blocked",
-          "actual": "Blocked",
+          "key": "referee_status",
+          "check": "Checking whether the referee status is present",
+          "condition": "The referee status now shows \"Blocked\".",
+          "expected": "the referee status \"Blocked\" present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "mallory_blocked_log_line",
+          "check": "Checking whether the Mallory blocked log line is present",
+          "condition": "The live log contains a line saying the decision for Mallory was BLOCKED.",
+          "expected": "a live log line saying the decision for Mallory was BLOCKED present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "likelyFiles": null
+    },
+    {
+      "test": "tests/kane/landing-demo-entry_test.md",
+      "title": "Landing page opens the demo and the app",
+      "route": "/",
+      "status": "passed",
+      "durationS": 100,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V6YW19TP5NW67XGZHF6RMW/dashboard/share/US_ZJAR5Q0CD4CXA8SVDJDXVVR9WIAWG3UA9YS7G9LXCKJ4EIOH7JKAH00JNS8MMXSU?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "1dd9b3b6-1d65-49df-8acf-a7cf3267ec26",
+      "objective": "## Follow the hero call to action\nVerify the Rails Desk landing page headline says \"Your agent proposes. Your rails decide.\" Click the first hero call-to-action button labeled \"Try the live demo\". Verify the URL is now on `/demo` and the page heading says \"See the rails in action.\"\n\n## Open the app goes to the real app\nGo back to the landing page. Click the hero button labeled \"Open the app\". Verify the URL is now on `/rails` and the page heading says \"Set your rails\" (not the demo).",
+      "failingStep": null,
+      "kaneDiagnosis": null,
+      "kaneSummary": null,
+      "checks": [
+        {
+          "key": "url_rails_check",
+          "check": "Reading the current page URL",
+          "condition": "the URL is now on `/rails`",
+          "expected": "/rails",
+          "expectedValue": "/rails",
+          "actual": "http://127.0.0.1:3100/rails",
+          "passed": true
+        },
+        {
+          "key": "page_heading_set_your_rails_check",
+          "check": "Reading the main page heading",
+          "condition": "the page heading says \"Set your rails\" (not the demo)",
+          "expected": "Set your rails",
+          "expectedValue": "Set your rails",
+          "actual": "Set your rails",
           "passed": true
         }
       ],
@@ -67,8 +128,8 @@
     }
   ],
   "totals": {
-    "total": 1,
-    "passed": 1,
+    "total": 2,
+    "passed": 2,
     "failed": 0
   }
 }
