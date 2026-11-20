@@ -46,7 +46,7 @@ curl -sS -X POST https://rails-desk.vercel.app/api/v1/proposals \
 
 **Limits.** No real funds move — the desk records the decision, and the walkthrough is a mock. The live site currently reports `storage: "ephemeral"`: Upstash Redis is not configured, so desks and receipts sit in `/tmp` and can disappear when the serverless instance is recycled. The app says this on `/rails`. **Included but not enabled:** GitHub Actions is not running the Kane gate workflow in this repo. To enable it, copy [`ci/kane-gate.yml`](ci/kane-gate.yml) to `.github/workflows/` and add LT secrets. The latest Kane gate run covered 2 of the 5 tests in the repo (both passed); earlier runs of the other three are in `docs/kane-evidence/`.
 
-**Next.** Connect Upstash Redis on production so desks persist. On-chain payments: earlier X Layer work exists on the `feat/xlayer-tapeout` branch, but it is not on `main` or the live site. Phone approvals for the review queue are not built yet.
+**Next.** Connect Upstash Redis on production so desks persist (the code supports it; the store has to be created and linked in Vercel). Move the owner key out of localStorage into an `httpOnly` session cookie, so page scripts can never read it. On-chain payments: earlier X Layer work exists on the `feat/xlayer-tapeout` branch, but it is not on `main` or the live site. Phone approvals for the review queue are not built yet.
 
 ## How it works
 
@@ -99,6 +99,13 @@ curl -X POST https://<your-deployment>/api/v1/proposals \
 **MCP:** download [`/rails-desk-mcp.mjs`](https://rails-desk.vercel.app/rails-desk-mcp.mjs) (no dependencies) and add it to your MCP client with `RAILS_DESK_URL` and `RAILS_DESK_AGENT_KEY`. Tools: `propose_payment`, `get_proposal`.
 
 **Storage:** Upstash Redis when `KV_REST_API_URL` / `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) are set, which is the free Vercel Marketplace integration. Otherwise JSON files in `data/desks` (or `RAILS_DESK_DATA_DIR`). On Vercel without Redis, files go to `/tmp` and can be cleared; the app says so.
+
+### Security and reliability
+
+- **Atomic writes, no chain forks.** Every change to a desk (rules, agent key, proposals, owner decisions, receipt appends) is a locked read-modify-write. With Redis, the lock is shared by all server instances (`SET NX PX` with a random token, released by a Lua compare-and-delete), and each save is a Lua compare-and-set on a per-desk revision, so a stale writer can never overwrite newer state and two proposals can never extend the same receipt. A lost race is retried on fresh state; if a desk stays busy the API returns `503` with `Retry-After`. Without Redis (local JSON files) an in-process lock is used, which is correct for one server process. Tests run 24 proposals at once across three simulated instances and check for one unbroken chain.
+- **Rate limits.** Fixed-window limits on write routes, returning `429` JSON with `Retry-After`: 60 requests/minute per API key (proposals, decisions, rule changes, key rotation), 300/minute per IP across those routes, and 20 new desks/hour per IP. Counters live in Redis when configured (shared by all instances), otherwise in each server's memory. Tune with `RAILS_DESK_RATE_PER_KEY_PER_MIN`, `RAILS_DESK_RATE_PER_IP_PER_MIN`, `RAILS_DESK_RATE_DESKS_PER_IP_PER_HOUR`, or turn off with `RAILS_DESK_RATE_LIMIT=off`.
+- **No wildcard CORS.** Agents call the API server to server (curl, SDKs, the MCP server), where CORS does not apply, and the app calls it from the same origin. To let another browser origin call the API, list it in `RAILS_DESK_ALLOWED_ORIGINS` (comma-separated).
+- **Keys in the browser.** The server keeps only SHA-256 hashes of keys. The usable owner and agent keys live in this browser's localStorage, so any script running on the page could read them. As defense in depth every page sends a Content-Security-Policy (`default-src 'self'`, no third-party scripts, `connect-src` limited to this origin and the X Layer RPCs, `object-src 'none'`, `frame-ancestors 'none'`) plus `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` and a restrictive `Permissions-Policy`. Scripts still allow `'unsafe-inline'`, because Next.js streams inline bootstrap scripts and a nonce would make every page render dynamically; `'unsafe-eval'` is not allowed in production.
 
 Kane browser tests need `LT_USERNAME` and `LT_ACCESS_KEY` in the environment or a gitignored `.env`. Never commit those values.
 
