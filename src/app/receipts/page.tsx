@@ -2,9 +2,21 @@
 import { useEffect, useState } from "react";
 import { useStore } from "@/components/store";
 import { verifyChain } from "@/lib/rails";
+import Link from "next/link";
+import { useDesk } from "@/components/desk";
+
+const outcomeLabel = { approved: "approved", needs_review: "needs your OK", blocked: "blocked", refused: "refused" } as const;
+const outcomeTag = (o: keyof typeof outcomeLabel) => (o === "approved" ? "tag" : o === "needs_review" ? "tag neutral" : "tag red");
 
 export default function ReceiptsPage() {
   const { receipts, legacyReceipts, receiptStatus, receiptError, refreshReceipts } = useStore();
+  const d = useDesk(4000);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [deskErr, setDeskErr] = useState<string | null>(null);
+  const desk = d.desk;
+  const pending = desk ? desk.proposals.filter((p) => p.status === "needs_review" && !p.review) : [];
+  const act = async (id: string, decision: "approve" | "refuse") => { setBusy(id); setDeskErr(null); try { await d.decide(id, decision); } catch (e) { setDeskErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(null); } };
+  const exportDesk = () => { if (!desk) return; const blob = new Blob([JSON.stringify(desk.receipts, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "rails-desk-receipts.json"; a.click(); URL.revokeObjectURL(url); };
   const [legacyStatus, setLegacyStatus] = useState<{ valid: boolean; brokenAt: number | null } | null>(null);
 
   useEffect(() => {
@@ -28,13 +40,32 @@ export default function ReceiptsPage() {
       <div>
         <div className="eyebrow">AUDIT LOG / 03</div>
         <h1 className="page-title">Receipt chain</h1>
-        <p className="page-sub">This is the same append-only file written by app decisions and checked by the receipt verifier.</p>
+        <p className="page-sub">Every proposal your agent sends is decided by your rails and recorded here. Payments above your review limit wait for you.</p>
       </div>
       <div className="action-row">
-        <button className="button ghost" onClick={() => void refreshReceipts()}>Refresh</button>
-        <button className="button" onClick={exportReceipts}>Export JSON</button>
+        <button className="button ghost" onClick={() => { void d.refresh(); void refreshReceipts(); }}>Refresh</button>
+        <button className="button" onClick={exportDesk} disabled={!desk}>Export JSON</button>
       </div>
     </div>
+    {(deskErr || d.error) && <div className="notice warn" style={{ marginBottom: 16 }}>{deskErr || d.error}</div>}
+    {d.ready && !d.keys && <div className="panel" style={{ marginBottom: 15 }}><div className="empty">No desk in this browser yet. <Link href="/rails">Set your rails</Link> to create one and connect your agent.</div></div>}
+    {desk && <>
+    <div className="stat-grid">
+      <div className="stat-card"><div className="stat-label">Needs your OK</div><div className="stat-value">{pending.length}</div><div className="stat-foot">Above your review limit of {desk.rules.reviewLimit}</div></div>
+      <div className="stat-card"><div className="stat-label">Approved</div><div className="stat-value">{desk.proposals.filter((p) => p.status === "approved" || p.review?.decision === "approved").length}</div><div className="stat-foot">By your rails or by you</div></div>
+      <div className="stat-card"><div className="stat-label">Blocked / refused</div><div className="stat-value">{desk.proposals.filter((p) => p.status === "blocked" || p.review?.decision === "refused").length}</div><div className="stat-foot">No execution performed</div></div>
+    </div>
+    <div className="panel" id="review">
+      <div className="section-head"><div><h2 className="panel-title">Needs your OK</h2><div className="panel-desc">Allowed recipients, but above your review limit. Nothing is paid until you approve.</div></div><span className={pending.length ? "tag neutral" : "tag"}>{pending.length} PENDING</span></div>
+      {pending.length === 0 ? <div className="empty">Nothing waiting. Proposals above your review limit will appear here.</div> : <div className="receipt-list">{pending.map((p) => <div className="receipt-row" key={p.id}><div><div className="receipt-title">{p.recipient} · {p.amount} credits</div><div className="receipt-meta">{p.reason || "No reason given"} · {p.reasons.join(" ")}</div></div><div className="action-row"><button className="button button-small" disabled={busy === p.id} onClick={() => void act(p.id, "approve")}>Approve</button><button className="button ghost button-small" disabled={busy === p.id} onClick={() => void act(p.id, "refuse")}>Refuse</button></div></div>)}</div>}
+    </div>
+    <div className="panel" style={{ marginTop: 15 }}>
+      <div className="section-head"><div><h2 className="panel-title">Decision history</h2><div className="panel-desc">Ordered oldest to newest. SHA-256 links recomputed by the server.</div></div><span className={desk.verification.valid ? "tag" : "tag red"}>{desk.verification.valid ? "CHAIN VALID" : `CHAIN BROKEN AT #${desk.verification.brokenAt}`}</span></div>
+      {desk.receipts.length === 0 ? <div className="empty">No receipts yet. <Link href="/rails#connect">Connect your agent</Link> or send a test proposal.</div> : <div className="table-wrap"><table><thead><tr><th>#</th><th>Decision</th><th>Recipient</th><th>Amount</th><th>Decision reason</th><th>Hash</th></tr></thead><tbody>{desk.receipts.map((r) => <tr key={r.id}><td className="mono">{String(r.index).padStart(3, "0")}</td><td><span className={outcomeTag(r.outcome)}>{outcomeLabel[r.outcome]}</span></td><td>{r.recipient}</td><td>{r.amount}</td><td style={{ maxWidth: 220 }}>{r.detail}</td><td><span className="mono" title={r.id}>{r.hash.slice(0, 16)}…</span></td></tr>)}</tbody></table></div>}
+    </div>
+    </>}
+    {receipts.length > 0 && <>
+    <div className="section-head" style={{ marginTop: 26 }}><div><h2 className="panel-title">Earlier demo history</h2><div className="panel-desc">The append-only file written by the previous demo flow and checked by the receipt verifier.</div></div><button className="button ghost button-small" onClick={exportReceipts}>Export file JSON</button></div>
     {receiptError && <div className="notice warn" style={{ marginBottom: 16 }}>{receiptError}</div>}
     <div className="stat-grid">
       <div className="stat-card"><div className="stat-label">File receipts</div><div className="stat-value">{receipts.length}</div><div className="stat-foot">data/receipts.jsonl · server filesystem</div></div>
@@ -55,6 +86,7 @@ export default function ReceiptsPage() {
       {receipts.length === 0 ? <div className="empty">No file receipts yet. Your first recorded decision will appear here.</div> : <div className="table-wrap"><table><thead><tr><th>#</th><th>Decision</th><th>Recipient</th><th>Amount</th><th>Decision reason</th><th>Hash</th></tr></thead><tbody>{receipts.map((r) => <tr key={r.id}><td className="mono">{String(r.index).padStart(3, "0")}</td><td><span className={r.decision === "approved" ? "tag" : r.decision === "refused" ? "tag red" : "tag neutral"}>{r.decision}</span></td><td>{r.recipient}</td><td>{r.amount}</td><td style={{ maxWidth: 190 }}>{r.decisionReason}</td><td><span className="mono">{r.hash.slice(0, 16)}…</span></td></tr>)}</tbody></table></div>}
       {receipts.map((r) => <details key={r.id} style={{ borderTop: "1px solid var(--line)", padding: "12px 0" }}><summary style={{ cursor: "pointer", fontSize: 11 }}>{"Receipt #" + r.index + " · " + r.recipient + " · " + r.decision}</summary><div style={{ display: "grid", gap: 7, marginTop: 12 }}><div className="hash"><b>Previous hash</b><br />{r.previousHash}</div><div className="hash"><b>Receipt hash</b><br />{r.hash}</div><div className="hash"><b>Agent reason</b><br />{r.reason}</div></div></details>)}
     </div>
+    </>}
     {legacyReceipts.length > 0 && <div className="panel" style={{ marginTop: 15 }}>
       <div className="section-head"><div><h2 className="panel-title">Preserved browser history</h2><div className="panel-desc">Existing localStorage receipts are preserved as legacy history. They are not migrated into or mixed with the file chain.</div></div><span className={legacyStatus?.valid ? "tag neutral" : "tag red"}>{legacyStatus === null ? "VERIFYING" : legacyStatus.valid ? "LEGACY VALID" : "LEGACY BROKEN"}</span></div>
       <div className="receipt-list">{legacyReceipts.map((r) => <div className="receipt-row" key={r.id}><div><div className="receipt-title">#{r.index} · {r.recipient} · {r.decision}</div><div className="receipt-meta">{r.decisionReason}</div></div><div className="receipt-amount">{r.amount}</div></div>)}</div>
