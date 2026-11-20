@@ -5,7 +5,7 @@ name: Kane gate
 # Runs the Kane CLI browser tests against a fresh build of this PR and fails the check
 # (blocking merge/deploy when branch protection requires it) if any Kane flow fails.
 # Needs repository secrets LT_USERNAME and LT_ACCESS_KEY (Settings → Secrets and variables → Actions).
-# Without them the job skips with a notice instead of failing.
+# Missing secrets fail the job. A skipped run is not a passing gate.
 
 on:
   pull_request:
@@ -37,7 +37,7 @@ jobs:
       - name: Kane report to job summary
         if: always()
         run: |
-          if [ -f KANE_REPORT.md ]; then cat KANE_REPORT.md >> "$GITHUB_STEP_SUMMARY"; else echo "Kane gate skipped (no LT secrets)." >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f KANE_REPORT.md ]; then cat KANE_REPORT.md >> "$GITHUB_STEP_SUMMARY"; else echo "KANE GATE REPORT MISSING: this job is not verified." >> "$GITHUB_STEP_SUMMARY"; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
