@@ -1,0 +1,48 @@
+# Active copy of ci/kane-gate.yml. Runs on pull requests and on demand (Actions → Kane gate → Run workflow).
+# Not on every push to main, to save Kane credits.
+name: Kane gate
+
+# Runs the Kane CLI browser tests against a fresh build of this PR and fails the check
+# (blocking merge/deploy when branch protection requires it) if any Kane flow fails.
+# Needs repository secrets LT_USERNAME and LT_ACCESS_KEY (Settings → Secrets and variables → Actions).
+# Without them the job skips with a notice instead of failing.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kane-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LT_USERNAME: ${{ secrets.LT_USERNAME }}
+      LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Install Kane CLI
+        if: env.LT_USERNAME != '' && env.LT_ACCESS_KEY != ''
+        run: npm install -g @testmuai/kane-cli@0.10.6
+      - name: Kane gate
+        run: npm run kane:gate:ci
+      - name: Kane report to job summary
+        if: always()
+        run: |
+          if [ -f KANE_REPORT.md ]; then cat KANE_REPORT.md >> "$GITHUB_STEP_SUMMARY"; else echo "Kane gate skipped (no LT secrets)." >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kane-report
+          path: |
+            KANE_REPORT.md
+            .kane/
+          if-no-files-found: ignore
