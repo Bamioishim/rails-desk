@@ -16,9 +16,7 @@
 //   npm run kane:gate                          # build, start on :3100, run all tests
 //   npm run kane:gate -- --url https://x.dev   # test an existing deployment
 //   npm run kane:gate -- --match blocked       # only tests whose path matches
-//   npm run kane:gate -- --skip-if-no-creds    # exit 0 with a notice if creds are missing
 //   npm run kane:gate -- --no-build            # reuse an existing .next build
-//   npm run kane:gate -- --from .kane/runs/<ts>/kane-stdout.ndjson   # re-render a saved run, no credits
 import {spawn, spawnSync} from "node:child_process";
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, copyFileSync} from "node:fs";
 import {tmpdir} from "node:os";
