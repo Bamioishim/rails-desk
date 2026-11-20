@@ -33,7 +33,7 @@ const REPORT_MD = path.join(ROOT, "KANE_REPORT.md");
 
 // ---------- args ----------
 const argv = process.argv.slice(2);
-const opt = {from: null, url: null, match: null, tags: null, port: 3100, build: true, skipIfNoCreds: false, name: null};
+const opt = {from: null, url: null, match: null, tags: null, port: 3100, build: true, name: null};
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   const next = () => argv[++i];
