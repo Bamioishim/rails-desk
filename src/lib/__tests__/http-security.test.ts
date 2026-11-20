@@ -99,3 +99,23 @@ describe("rate limiter (Redis)", () => {
     expect((await hit({ bucket: "d", limit: 1, windowMs: 60_000 }, "k")).allowed).toBe(true);
   });
 });
+
+describe("security headers", () => {
+  it("sends a CSP without unsafe-eval in production, plus anti-framing and nosniff", async () => {
+    const env = process.env as Record<string, string | undefined>;
+    const prev = env.NODE_ENV; env.NODE_ENV = "production"; vi.resetModules();
+    try {
+      const cfg = (await import("../../../next.config")).default;
+      const [{ source, headers }] = await cfg.headers!();
+      expect(source).toBe("/:path*");
+      const h = Object.fromEntries(headers.map((x) => [x.key, x.value]));
+      expect(h["Content-Security-Policy"]).toMatch(/frame-ancestors 'none'/);
+      expect(h["Content-Security-Policy"]).toMatch(/object-src 'none'/);
+      expect(h["Content-Security-Policy"]).not.toMatch(/unsafe-eval/);
+      expect(h["Content-Security-Policy"]).toMatch(/connect-src 'self'/);
+      expect(h["X-Content-Type-Options"]).toBe("nosniff");
+      expect(h["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
+      expect(h["X-Frame-Options"]).toBe("DENY");
+    } finally { env.NODE_ENV = prev; }
+  });
+});
