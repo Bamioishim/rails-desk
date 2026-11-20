@@ -1,85 +1,74 @@
 {
   "tool": "kane-gate",
   "kaneCli": "0.10.6",
-  "generatedAt": "2026-11-20T00:21:19.551Z",
-  "commit": "35635bc",
+  "generatedAt": "2026-11-20T00:23:04.669Z",
+  "commit": "537cdfd",
   "srcDirty": false,
-  "status": "failed",
+  "status": "passed",
   "baseUrl": "http://127.0.0.1:3100",
-  "executionId": "d8f836cf-a742-4620-876f-1fe7570dc00d",
-  "kaneExitCode": 1,
+  "executionId": "731ace22-3aba-4b80-a9a9-b2727082e24f",
+  "kaneExitCode": 0,
   "credits": {
-    "before": 477.668,
-    "after": 459.9724
+    "before": 459.9724,
+    "after": 422.7721
   },
   "members": [
     {
       "test": "tests/kane/demo-walkthrough_test.md",
       "title": "Play walkthrough runs all three outcomes by itself",
       "route": "/demo",
-      "status": "failed",
-      "durationS": 48,
-      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V56K5XS111GS15J0N4E7P9/dashboard/share/US_DUJHGJAW9OIDUWMBCZTKC3ZNW3ECQ1JXQKKOLVWXCQVO713X5MYHXX8UW9SQ02W1?type=summary&agentView=true&fqdn=summary-page",
-      "sessionId": "9044c360-194c-4012-b259-8257dd5ed342",
-      "objective": "## Press play once and watch\nClick \"Play walkthrough\" once and do not click anything else. The walkthrough types each proposal into the form by itself, one after another: Alex for 8 credits, then Jordan for 15 credits, then Mallory for 12 credits. While the Jordan proposal is on screen, verify the referee status shows \"Needs your OK\" before it changes to approved.\n\n## The finished walkthrough shows all three outcomes\nWait until the notice says the walkthrough is complete. Verify that the receipts shown on the page now include all three: \"Alex · 8 credits\" saying \"Executed (mock)\", \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK, and \"Mallory · 12 credits\" saying \"Blocked\". Verify the referee status now shows \"Blocked\".",
-      "failingStep": "Jordan has already advanced to Mallory, so the required on-screen status cannot be verified without another click.",
-      "kaneDiagnosis": "After the single required start click, the walkthrough advanced from Jordan to Mallory before the Jordan \"Needs your OK\" state could be checked.",
-      "kaneSummary": "The automatic walkthrough does not leave the Jordan proposal and its approval-needed status visible long enough for the required check. Since no further clicks are allowed, there is no way to recover that state.\nKeep the Jordan proposal on screen with \"Needs your OK\" visible until the walkthrough has allowed that checkpoint to be observed, without requiring another user action.\nevidence: objective_contradiction: Jordan has already advanced to Mallory, so the required on-screen status cannot be verified without another click.",
-      "checks": [],
-      "likelyFiles": {
-        "byRoute": [
-          "src/app/demo/page.tsx",
-          "src/lib/policy-circuit.ts",
-          "src/lib/demo-config.ts"
-        ],
-        "byPhrase": [
-          {
-            "file": "src/app/demo/page.tsx",
-            "lines": [
-              56,
-              78,
-              125
-            ],
-            "phrases": [
-              "Needs your OK"
-            ]
-          },
-          {
-            "file": "src/app/rails/page.tsx",
-            "lines": [
-              13
-            ],
-            "phrases": [
-              "Needs your OK"
-            ]
-          },
-          {
-            "file": "src/app/receipts/page.tsx",
-            "lines": [
-              54,
-              59
-            ],
-            "phrases": [
-              "Needs your OK"
-            ]
-          },
-          {
-            "file": "src/components/landing.tsx",
-            "lines": [
-              9,
-              20
-            ],
-            "phrases": [
-              "Needs your OK"
-            ]
-          }
-        ]
-      }
+      "status": "passed",
+      "durationS": 70,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V594YAP48124F6NGTDSP89/dashboard/share/US_M3YZA9Y1HK6LWXOOV2N3LW6BLI2Y2W99BUG3NQG485GBXRHJYJ6H6128ZDWO95TP?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "14c29001-09f0-4a67-85da-6eecf6ccee68",
+      "objective": "## Press play once and watch\nClick \"Play walkthrough\" once and do not click anything else. The walkthrough types each proposal into the form by itself, one after another: Alex for 8 credits, then Jordan for 15 credits, then Mallory for 12 credits.\n\n## The finished walkthrough shows all three outcomes\nWait until the notice says the walkthrough is complete. Verify that the receipts shown on the page now include all three: \"Alex · 8 credits\" saying \"Executed (mock)\", \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK, and \"Mallory · 12 credits\" saying \"Blocked\". Verify the referee status now shows \"Blocked\".",
+      "failingStep": null,
+      "kaneDiagnosis": null,
+      "kaneSummary": null,
+      "checks": [
+        {
+          "key": "alex_8_credits_executed_mock_receipt",
+          "check": "Checking whether the Alex receipt is present",
+          "condition": "The receipts shown on the page include \"Alex · 8 credits\" saying \"Executed (mock)\".",
+          "expected": "the receipt \"Alex · 8 credits\" saying \"Executed (mock)\" present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "jordan_15_credits_executed_mock_ok_reason_receipt",
+          "check": "Checking whether the Jordan receipt is present",
+          "condition": "The receipts shown on the page include \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK.",
+          "expected": "the receipt \"Jordan · 15 credits\" saying \"Executed (mock)\" with a reason that mentions it needed your OK present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "mallory_12_credits_blocked_receipt",
+          "check": "Checking whether the Mallory receipt is present",
+          "condition": "The receipts shown on the page include \"Mallory · 12 credits\" saying \"Blocked\".",
+          "expected": "the receipt \"Mallory · 12 credits\" saying \"Blocked\" present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "referee_status_blocked",
+          "check": "Reading the referee status",
+          "condition": "The referee status shows \"Blocked\".",
+          "expected": "Blocked",
+          "expectedValue": "Blocked",
+          "actual": "Blocked",
+          "passed": true
+        }
+      ],
+      "likelyFiles": null
     }
   ],
   "totals": {
     "total": 1,
-    "passed": 0,
-    "failed": 1
+    "passed": 1,
+    "failed": 0
   }
 }
