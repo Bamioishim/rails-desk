@@ -3,7 +3,7 @@
 import Link from "next/link";
 import {useEffect, useRef, useState} from "react";
 
-type Stage = "idle" | "typing" | "review" | "approved" | "refused" | "complete";
+type Stage = "idle" | "typing" | "review" | "approved" | "blocked" | "refused" | "complete";
 type DemoReceipt = {recipient:string;amount:number;decision:string;reason:string};
 
 const wait = (ms:number) => new Promise<void>(resolve => window.setTimeout(resolve,ms));
@@ -41,9 +41,9 @@ export default function GuidedDemoPage(){
  const takeControl=()=>{runId.current+=1;setAuto(false);setNote("Auto-play paused. You can edit the fields and use the controls yourself.");};
  const submit=()=>{
   const value=Number(amount);
-  if(!Number.isFinite(value)||value<=0){setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:"Amount must be greater than zero."});setNote("Blocked: the amount must be a positive number.");return;}
-  if(value>20){setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:"Amount exceeds the demo cap of 20 credits."});setNote("Blocked: this proposal exceeds the 20-credit spending cap.");return;}
-  if(!["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())){setStage("refused");setReceipt({recipient,amount:value,decision:"Refused",reason:"Recipient is not on the demo allowlist."});setNote("Blocked: this recipient is not on the allowed list.");return;}
+  if(!Number.isFinite(value)||value<=0){setStage("blocked");setReceipt({recipient,amount:value,decision:"Blocked",reason:"Amount must be greater than zero."});setNote("Blocked: the amount must be a positive number.");return;}
+  if(value>20){setStage("blocked");setReceipt({recipient,amount:value,decision:"Blocked",reason:"Amount exceeds the demo cap of 20 credits."});setNote("Blocked: this proposal exceeds the 20-credit spending cap.");return;}
+  if(!["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())){setStage("blocked");setReceipt({recipient,amount:value,decision:"Blocked",reason:"Recipient is not on the demo allowlist."});setNote("Blocked: this recipient is not on the allowed list.");return;}
   setReceipt(null);setStage("review");setNote("Within the demo policy. The proposal is waiting for your explicit approval. No transfer has occurred.");
  };
  const approve=()=>{setStage("approved");setNote("Approved in the walkthrough. This still does not execute anything.");};
@@ -75,8 +75,8 @@ export default function GuidedDemoPage(){
    </div>
    <div className="demo-progress" aria-label="Walkthrough progress">
     <span className={stage!=="idle"?"done":""}>01 Propose</span><i/>
-    <span className={["approved","refused","complete"].includes(stage)?"done":stage==="review"?"current":""}>02 Check</span><i/>
-    <span className={stage==="complete"||stage==="refused"?"done":""}>03 Record</span>
+    <span className={["approved","blocked","refused","complete"].includes(stage)?"done":stage==="review"?"current":""}>02 Check</span><i/>
+    <span className={stage==="complete"||stage==="refused"||stage==="blocked"?"done":""}>03 Record</span>
    </div>
    <div className="demo-grid">
     <section className="demo-panel">
@@ -91,7 +91,7 @@ export default function GuidedDemoPage(){
      </div>
     </section>
     <aside className="demo-panel">
-     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent's opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="refused"?"Refused":"Complete"}</span></div>
+     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent's opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="blocked"?"Blocked":stage==="refused"?"Refused":"Complete"}</span></div>
      <div className="demo-notice">{note}</div>
      <div className="demo-rule"><span>01</span><div><strong>Spending cap</strong><p>{Number(amount)>0&&Number(amount)<=20? "Amount is within the 20-credit maximum.":"Amount must be positive and no more than 20 credits."}</p></div></div>
      <div className="demo-rule"><span>02</span><div><strong>Recipient allowlist</strong><p>{["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}</p></div></div>
