@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { loadRaw, saveRaw, storageMode, withLock } from "./desk-store";
+import { loadVersioned, saveRaw, storageMode, StoreBusyError, withLock } from "./desk-store";
 
 export type Rules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number };
 export type Status = "approved" | "needs_review" | "blocked";
@@ -43,18 +43,35 @@ function parseKey(key: string | null) {
 }
 export function bearer(request: Request) { return request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ?? null; }
 
-async function load(deskId: string): Promise<Desk> {
-  const raw = await loadRaw(deskId);
+async function load(deskId: string): Promise<{ desk: Desk; rev: string }> {
+  const { raw, rev } = await loadVersioned(deskId);
   if (!raw) throw new DeskError("Desk not found. It may have been cleared from temporary storage; create a new desk.", 404);
-  return JSON.parse(raw) as Desk;
+  return { desk: JSON.parse(raw) as Desk, rev };
 }
 async function authed(key: string | null, need: "owner" | "agent" | "any") {
   const k = parseKey(key);
   if (need === "owner" && k.role !== "owner") throw new DeskError("This action needs the owner key, not the agent key.", 403);
-  const desk = await load(k.deskId);
+  const { desk, rev } = await load(k.deskId);
   const ok = equalHash(sha(k.key), k.role === "owner" ? desk.ownerKeyHash : desk.agentKeyHash);
   if (!ok) throw new DeskError("Invalid API key.", 401);
-  return { desk, role: k.role };
+  return { desk, role: k.role, rev };
+}
+
+/**
+ * Read-modify-write one desk atomically: per-desk lock (local + Redis), then a
+ * compare-and-set save on the revision that was read. A lost race is retried on fresh
+ * state, so two proposals can never both extend the same receipt (no chain fork).
+ */
+async function mutate<T>(key: string | null, need: "owner" | "any", fn: (desk: Desk) => T | Promise<T>): Promise<T> {
+  const { deskId } = parseKey(key);
+  return withLock(deskId, async () => {
+    for (let attempt = 0; ; attempt++) {
+      const { desk, rev } = await authed(key, need);
+      const result = await fn(desk);
+      try { await saveRaw(desk.id, JSON.stringify(desk), rev); return result; }
+      catch (e) { if (!(e instanceof StoreBusyError) || attempt >= 4) throw e; }
+    }
+  });
 }
 
 export function cleanRules(input: unknown): Rules {
@@ -112,23 +129,19 @@ export async function createDesk(name?: string) {
 export async function getDesk(key: string | null) { const { desk } = await authed(key, "owner"); return publicDesk(desk); }
 
 export async function updateRules(key: string | null, rules: unknown) {
-  const { deskId } = parseKey(key);
-  return withLock(deskId, async () => { const { desk } = await authed(key, "owner"); desk.rules = cleanRules(rules); await saveRaw(desk.id, JSON.stringify(desk)); return publicDesk(desk); });
+  return mutate(key, "owner", (desk) => { desk.rules = cleanRules(rules); return desk; }).then(publicDesk);
 }
 
 export async function rotateAgentKey(key: string | null) {
-  const { deskId } = parseKey(key);
-  return withLock(deskId, async () => {
-    const { desk } = await authed(key, "owner");
+  return mutate(key, "owner", (desk) => {
     const agentKey = `rd_agent_${desk.id}_${token()}`;
     desk.agentKeyHash = sha(agentKey); desk.agentKeyHint = agentKey.slice(-4);
-    await saveRaw(desk.id, JSON.stringify(desk));
     return { agentKey };
   });
 }
 
 export async function propose(key: string | null, body: unknown) {
-  const { deskId } = parseKey(key);
+  parseKey(key);
   const b = (body ?? {}) as Record<string, unknown>;
   const amount = Number(b.amount);
   const recipient = typeof b.recipient === "string" ? b.recipient.trim().slice(0, 80) : "";
@@ -136,8 +149,7 @@ export async function propose(key: string | null, body: unknown) {
   const agent = typeof b.agent === "string" ? b.agent.slice(0, 60) : "agent";
   if (!recipient) throw new DeskError("recipient (string) is required.", 400);
   if (b.amount === undefined || b.amount === null || Number.isNaN(amount)) throw new DeskError("amount (number) is required.", 400);
-  return withLock(deskId, async () => {
-    const { desk } = await authed(key, "any");
+  return mutate(key, "any", (desk) => {
     const { status, checks } = evaluate(amount, recipient, desk.rules);
     const proposal: Proposal = { id: newId("prop"), createdAt: new Date().toISOString(), amount, recipient, reason, agent, status, checks, reasons: checks.filter((c) => !c.passed || (c.rule === "review_limit" && status === "needs_review")).map((c) => c.detail), review: null, receiptIds: [] };
     if (status === "approved") proposal.reasons = ["Within every rule, so it is approved without a person."];
@@ -145,7 +157,6 @@ export async function propose(key: string | null, body: unknown) {
     proposal.receiptIds.push(receipt.id);
     desk.proposals.push(proposal);
     if (desk.proposals.length > MAX_PROPOSALS) desk.proposals = desk.proposals.slice(-MAX_PROPOSALS);
-    await saveRaw(desk.id, JSON.stringify(desk));
     return publicProposal(proposal);
   });
 }
@@ -159,9 +170,8 @@ export async function getProposal(key: string | null, id: string) {
 
 export async function decide(key: string | null, id: string, decision: unknown, note?: unknown) {
   if (decision !== "approve" && decision !== "refuse") throw new DeskError('decision must be "approve" or "refuse".', 400);
-  const { deskId } = parseKey(key);
-  return withLock(deskId, async () => {
-    const { desk } = await authed(key, "owner");
+  parseKey(key);
+  return mutate(key, "owner", (desk) => {
     const p = desk.proposals.find((x) => x.id === id);
     if (!p) throw new DeskError("Proposal not found.", 404);
     if (p.status !== "needs_review") throw new DeskError(`This proposal was ${p.status} by the rails; only proposals that need review can be decided.`, 409);
@@ -172,7 +182,6 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined };
     const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review." });
     p.receiptIds.push(r.id);
-    await saveRaw(desk.id, JSON.stringify(desk));
     return publicProposal(p);
   });
 }
