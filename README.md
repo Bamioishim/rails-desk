@@ -42,9 +42,9 @@ curl -sS -X POST https://rails-desk.vercel.app/api/v1/proposals \
 
 ## What works, limits, and next
 
-**What works.** The landing page, the auto-play `/demo` walkthrough, the real app at `/rails` and `/receipts`, the `/api/v1` agent API, the `propose_payment` / `get_proposal` MCP server, the review queue, and the SHA-256 receipt chain. The Kane loop is in the repo: plain-English tests in `tests/kane/`, `npm run kane:gate`, a `KANE_REPORT.md` fix request back to the coding agent, instructions in `AGENTS.md` (also `CLAUDE.md` and the Cursor rule), and a pre-push hook. Kane caught a real "Refused" vs "Blocked" bug; the fix landed in `ff8324b`, and the gate then passed.
+**What works.** The landing page, the auto-play `/demo` walkthrough, the real app at `/rails` and `/receipts`, the `/api/v1` agent API, the `propose_payment` / `get_proposal` MCP server, the review queue, and the SHA-256 receipt chain. The Kane loop is in the repo: plain-English tests in `tests/kane/`, `npm run kane:gate`, a `KANE_REPORT.md` fix request back to the coding agent, instructions in `AGENTS.md` (also `CLAUDE.md` and the Cursor rule), and a pre-push hook. Kane caught a real "Refused" vs "Blocked" bug; the fix landed in `ff8324b`, and that gate run then passed (2/2 of the tests it ran).
 
-**Limits.** No real funds move — the desk records the decision, and the walkthrough is a mock. The live site currently reports `storage: "ephemeral"`: Upstash Redis is not configured, so desks and receipts sit in `/tmp` and can disappear when the serverless instance is recycled. The app says this on `/rails`. The GitHub Actions workflow lives at [`ci/kane-gate.yml`](ci/kane-gate.yml) and is not active under `.github/workflows`. The latest Kane gate run covered 2 of the 5 tests in the repo (both passed); earlier runs of the other three are in `docs/kane-evidence/`.
+**Limits.** No real funds move — the desk records the decision, and the walkthrough is a mock. The live site currently reports `storage: "ephemeral"`: Upstash Redis is not configured, so desks and receipts sit in `/tmp` and can disappear when the serverless instance is recycled. The app says this on `/rails`. **Included but not enabled:** GitHub Actions is not running the Kane gate workflow in this repo. To enable it, copy [`ci/kane-gate.yml`](ci/kane-gate.yml) to `.github/workflows/` and add LT secrets. The latest Kane gate run covered 2 of the 5 tests in the repo (both passed); earlier runs of the other three are in `docs/kane-evidence/`.
 
 **Next.** Connect Upstash Redis on production so desks persist. On-chain payments: earlier X Layer work exists on the `feat/xlayer-tapeout` branch, but it is not on `main` or the live site. Phone approvals for the review queue are not built yet.
 
@@ -55,7 +55,7 @@ curl -sS -X POST https://rails-desk.vercel.app/api/v1/proposals \
 3. Copy the agent key from **Connect your agent** and give it to your agent.
 4. The agent proposes a payment. The desk checks a valid amount under the cap, a case-insensitive allowlist match, and the review limit, then records the decision on a SHA-256 receipt chain.
 
-The agent's key can propose and read status, but cannot change rules or approve its own proposals. Keys are stored only as SHA-256 hashes. A reason the agent writes is treated as data, never as an instruction.
+The agent's key can propose and read status, but cannot change rules or approve its own proposals. The server stores only SHA-256 hashes of the owner and agent keys. The usable keys are shown once and kept in your browser's localStorage (and wherever you give the agent key). A reason the agent writes is treated as data, never as an instruction.
 
 Default rules are recipients Alex, Jordan and Sam, a maximum of 20, and a review limit of 10. Proposals above the review limit appear on **/receipts** under *Needs your OK* with Approve / Refuse.
 
@@ -108,6 +108,8 @@ A previous demo flow still has a JSON Lines log at `data/receipts.jsonl`, checke
 
 ## Verified with Kane CLI
 
+**The latest Kane gate run covered 2 of the 5 tests in the repo; those 2 passed. The other 3 were not in that run.**
+
 Rails Desk is built by an AI coding agent and verified by [Kane CLI](https://www.testmuai.com/kane-cli/) from TestMu AI. Kane drives a real Chrome through the flows in `tests/kane/*_test.md`, written in plain English, and decides pass or fail. Its verdict goes straight back to the coding agent: **the agent isn't done until Kane is green.**
 
 There are **5** plain-English tests in `tests/kane/`:
@@ -137,7 +139,7 @@ flowchart LR
 - **`scripts/kane-gate.mjs`** (`npm run kane:gate`) builds the app, starts it, runs Kane with `kane-cli testrun run --agent`, and parses Kane's NDJSON stream and per-test session logs. It writes `.kane/last-report.json` (machine-readable) and `KANE_REPORT.md`, then exits **1 on any failure** (2 on setup errors).
 - **`KANE_REPORT.md` is a re-prompt for the agent.** On failure it contains a "Fix request for the coding agent" section with the failing step, expected vs actual values, Kane's own diagnosis, the Kane run link (video, steps, screenshots) and the source files and lines that contain the words Kane flagged.
 - **Agents are told to use it.** [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md) and [`.cursor/rules/kane-gate.mdc`](.cursor/rules/kane-gate.mdc) require the agent to run the gate after every change and keep fixing until the report says PASS.
-- **Red blocks shipping.** `npm run hooks:install` enables a [`pre-push`](.githooks/pre-push) hook that runs the gate. Skip a docs-only push with `KANE_SKIP=1 git push`. [`ci/kane-gate.yml`](ci/kane-gate.yml) is a GitHub Actions workflow that runs it on every PR. Copy it into `.github/workflows/` and add the repo secrets `LT_USERNAME` and `LT_ACCESS_KEY`. Without secrets it skips instead of failing, so forks and Vercel builds don't break.
+- **Red blocks shipping.** `npm run hooks:install` enables a [`pre-push`](.githooks/pre-push) hook that runs the gate. Skip a docs-only push with `KANE_SKIP=1 git push`. **Included but not enabled:** GitHub Actions is not running this workflow in this repo. To enable it, copy [`ci/kane-gate.yml`](ci/kane-gate.yml) to `.github/workflows/` and add the repo secrets `LT_USERNAME` and `LT_ACCESS_KEY`. Without secrets the workflow skips instead of failing, so forks and Vercel builds don't break.
 
 ### Fail → fix → pass (real runs, 20 Nov 2026)
 
