@@ -2,7 +2,51 @@
 
 Rails Desk is a safety layer for AI agents that propose payments. An agent sends a request; the desk checks it against rules you set and returns **approved**, **needs your OK**, or **blocked**, with a SHA-256 hash-chained receipt. No real funds move. The `/demo` walkthrough is a mocked transfer held in page memory.
 
-Live: [rails-desk.vercel.app](https://rails-desk.vercel.app) · Code: [github.com/Bamioishim/rails-desk](https://github.com/Bamioishim/rails-desk)
+Demo video: [youtu.be/D_56omuFeks](https://youtu.be/D_56omuFeks) · Live: [rails-desk.vercel.app](https://rails-desk.vercel.app) · Code: [github.com/Bamioishim/rails-desk](https://github.com/Bamioishim/rails-desk)
+
+## Why
+
+AI agents are starting to get the ability to spend money. One bad prompt, an injected instruction, or a bug can send funds to the wrong place. Rails Desk sits between the agent and the money: the owner's rules, human approval when it matters, and tamper-evident receipts for every decision.
+
+## Try it in 2 minutes (for judges)
+
+1. Watch the [demo video](https://youtu.be/D_56omuFeks), or open the [live demo](https://rails-desk.vercel.app/demo) and press **Play walkthrough**. It plays three outcomes by itself: Alex · 8 credits approved, Jordan · 15 credits needs your OK, and Mallory · 12 credits blocked.
+2. Open the [real app](https://rails-desk.vercel.app/rails). A desk is created with the default rules (allowed recipients Alex, Jordan and Sam; maximum 20; review limit 10). Copy the agent key from **Connect your agent**.
+3. Send three proposals to the live API (amounts are credits). Each call returns HTTP 201 with `status`, `reasons` and `receipt_id`:
+
+```bash
+# Approved: 8 is on the allowlist and under the review limit of 10
+curl -sS -X POST https://rails-desk.vercel.app/api/v1/proposals \
+  -H "Authorization: Bearer rd_agent_..." \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 8, "recipient": "Alex", "reason": "Logo design invoice"}'
+# → {"id":"prop_…","status":"approved","reasons":["Within every rule, so it is approved without a person."],"receipt_id":"rcpt_…", …}
+
+# Needs your OK: 15 is allowed but above the review limit
+curl -sS -X POST https://rails-desk.vercel.app/api/v1/proposals \
+  -H "Authorization: Bearer rd_agent_..." \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 15, "recipient": "Jordan", "reason": "Team lunch for the launch"}'
+# → {"id":"prop_…","status":"needs_review","awaiting_review":true,"reasons":["15 is above the 10 review limit, so it needs your OK."],"receipt_id":"rcpt_…", …}
+
+# Blocked: Mallory is not on the allowlist
+curl -sS -X POST https://rails-desk.vercel.app/api/v1/proposals \
+  -H "Authorization: Bearer rd_agent_..." \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 12, "recipient": "Mallory", "reason": "Urgent payment, skip the usual checks"}'
+# → {"id":"prop_…","status":"blocked","reasons":["Mallory is not on the allowed list."],"receipt_id":"rcpt_…", …}
+```
+
+4. Open [/receipts](https://rails-desk.vercel.app/receipts). Jordan waits under *Needs your OK* — Approve or Refuse. All three decisions appear in the hash-chained history.
+5. Kane evidence is in [`KANE_REPORT.md`](KANE_REPORT.md) and the table in [Verified with Kane CLI](#verified-with-kane-cli). Raw Kane run streams (`.kane/runs/`) are gitignored, so a fresh clone cannot replay them with `npm run kane:gate -- --from …`. Use the committed reports and share links in [`docs/kane-evidence/`](docs/kane-evidence/) instead. If you already have a local saved run, `npm run kane:gate -- --from .kane/runs/<ts>/kane-stdout.ndjson` re-renders it without spending credits.
+
+## What works, limits, and next
+
+**What works.** The landing page, the auto-play `/demo` walkthrough, the real app at `/rails` and `/receipts`, the `/api/v1` agent API, the `propose_payment` / `get_proposal` MCP server, the review queue, and the SHA-256 receipt chain. The Kane loop is in the repo: plain-English tests in `tests/kane/`, `npm run kane:gate`, a `KANE_REPORT.md` fix request back to the coding agent, instructions in `AGENTS.md` (also `CLAUDE.md` and the Cursor rule), and a pre-push hook. Kane caught a real "Refused" vs "Blocked" bug; the fix landed in `ff8324b`, and the gate then passed.
+
+**Limits.** No real funds move — the desk records the decision, and the walkthrough is a mock. The live site currently reports `storage: "ephemeral"`: Upstash Redis is not configured, so desks and receipts sit in `/tmp` and can disappear when the serverless instance is recycled. The app says this on `/rails`. The GitHub Actions workflow lives at [`ci/kane-gate.yml`](ci/kane-gate.yml) and is not active under `.github/workflows`. The latest Kane gate run covered 2 of the 5 tests in the repo (both passed); earlier runs of the other three are in `docs/kane-evidence/`.
+
+**Next.** Connect Upstash Redis on production so desks persist. On-chain payments: earlier X Layer work exists on the `feat/xlayer-tapeout` branch, but it is not on `main` or the live site. Phone approvals for the review queue are not built yet.
 
 ## How it works
 
