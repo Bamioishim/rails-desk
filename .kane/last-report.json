@@ -1,108 +1,54 @@
 {
   "tool": "kane-gate",
   "kaneCli": "0.10.6",
-  "generatedAt": "2026-11-20T00:07:24.497Z",
-  "commit": "ff8324b",
+  "generatedAt": "2026-11-20T00:18:52.718Z",
+  "commit": "e2a32f7",
   "srcDirty": false,
-  "status": "passed",
+  "status": "failed",
   "baseUrl": "http://127.0.0.1:3100",
-  "executionId": "d7dec345-1e36-4e1d-85eb-b26f17492128",
-  "kaneExitCode": 0,
+  "executionId": "8b79b130-1b66-4fcb-9a69-474076eb3bc4",
+  "kaneExitCode": 1,
   "credits": {
-    "before": 644.0218,
-    "after": 591.1282
+    "before": 591.1282,
+    "after": 477.668
   },
   "members": [
     {
-      "test": "tests/kane/demo-approve-execute_test.md",
-      "title": "Valid demo proposal waits for approval, then mock execution",
-      "route": "/demo",
+      "test": "tests/kane/app-agent-review_test.md",
+      "title": "A user sets rules, an agent proposes, the user approves",
+      "route": "/rails",
       "status": "passed",
-      "durationS": 146,
-      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V469NHMNNG6YH5DY9CQNZA/dashboard/share/US_54OA1K2MR6POQAYZCG6L26E9209WUQKQ8DOYTHKJ0ML4LQJS4AKKTDCPQ3DF45FN?type=summary&agentView=true&fqdn=summary-page",
-      "sessionId": "7f58f058-da98-4589-9fa8-d9f8fe3f1c68",
-      "objective": "## Review, approve, then execute the mock\nDo not click \"Play walkthrough\". Keep the default recipient Alex and amount 12. Click \"Check against rails\" and verify the page says the proposal is waiting for your explicit approval and that no transfer has occurred. Click \"Approve\" and verify the referee status is \"Approved\" while a separate \"Execute mock transfer\" button remains available. Click that button. Verify the status becomes \"Complete\", the receipt says \"Alex · 12 credits\" and \"Executed (mock)\", and the page says no funds moved and no persistent receipt was written.",
+      "durationS": 215,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V4SY2BT8HXPNPFSPZVTRPQ/dashboard/share/US_79W1EI5G6P1YQ1A4S2UJDWH4JHZU3QJRLIHSY8M4NELC5P518NXKTE3HOA4UH3AA?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "e7ab77c9-319d-4b26-a4d3-6f691d56b500",
+      "objective": "## Rules persist\nWait until the \"Agent API key\" field shows a key starting with \"rd_agent_\". Change \"Review limit\" to 6 and click \"Save policy changes\". Verify \"Rails saved\" appears. Reload the page and verify \"Review limit\" still shows 6.\n\n## Agent proposal needs your OK\nClick \"Test: Jordan · 15\". Verify the result message says \"Needs your OK\" and mentions the 6 review limit and a receipt id starting with \"rcpt_\".\n\n## Approve it on the Receipts page\nClick \"Open receipts\". In the \"Needs your OK\" section verify a row \"Jordan · 15 credits\", then click its \"Approve\" button. Verify the section then says \"Nothing waiting\" and the \"Decision history\" table has a row for Jordan with \"Approved by you after review.\"",
       "failingStep": null,
       "kaneDiagnosis": null,
       "kaneSummary": null,
       "checks": [
         {
-          "key": "proposal_waiting_explicit_approval",
-          "check": "Checking whether the proposal approval status is present",
-          "condition": "the page says the proposal is waiting for your explicit approval",
-          "expected": "the page statement that the proposal is waiting for your explicit approval present",
+          "key": "jordan_15_credits_row_present",
+          "check": "Checking whether the Jordan 15 credits row is present in Needs your OK",
+          "condition": "A row \"Jordan · 15 credits\" is present in the \"Needs your OK\" section.",
+          "expected": "a row \"Jordan · 15 credits\" in the \"Needs your OK\" section present",
           "expectedValue": "true",
           "actual": "true",
           "passed": true
         },
         {
-          "key": "no_transfer_occurred",
-          "check": "Checking whether the no-transfer status is present",
-          "condition": "the page says no transfer has occurred",
-          "expected": "the page statement that no transfer has occurred present",
+          "key": "needs_your_ok_nothing_waiting",
+          "check": "Checking whether the Needs your OK section has a waiting-items message",
+          "condition": "The \"Needs your OK\" section says \"Nothing waiting\".",
+          "expected": "\"Nothing waiting\" in the \"Needs your OK\" section present",
           "expectedValue": "true",
           "actual": "true",
           "passed": true
         },
         {
-          "key": "referee_status_approved",
-          "check": "Reading the referee status from the decision panel",
-          "condition": "the referee status is \"Approved\"",
-          "expected": "Approved",
-          "expectedValue": "Approved",
-          "actual": "Approved",
-          "passed": true
-        },
-        {
-          "key": "execute_mock_transfer_button_available",
-          "check": "Checking whether the Execute mock transfer button is present",
-          "condition": "a separate \"Execute mock transfer\" button remains available",
-          "expected": "a separate \"Execute mock transfer\" button present",
-          "expectedValue": "true",
-          "actual": "true",
-          "passed": true
-        },
-        {
-          "key": "status_complete",
-          "check": "Reading the status from the referee decision",
-          "condition": "the status becomes \"Complete\"",
-          "expected": "Complete",
-          "expectedValue": "Complete",
-          "actual": "Complete",
-          "passed": true
-        },
-        {
-          "key": "receipt_alex_12_credits",
-          "check": "Reading the recipient and credits from the demo receipt",
-          "condition": "the receipt says \"Alex · 12 credits\"",
-          "expected": "Alex · 12 credits",
-          "expectedValue": "Alex · 12 credits",
-          "actual": "Alex · 12 credits",
-          "passed": true
-        },
-        {
-          "key": "receipt_executed_mock",
-          "check": "Reading the execution status from the demo receipt",
-          "condition": "the receipt says \"Executed (mock)\"",
-          "expected": "Executed (mock)",
-          "expectedValue": "Executed (mock)",
-          "actual": "Executed (mock)",
-          "passed": true
-        },
-        {
-          "key": "no_funds_moved",
-          "check": "Checking whether the no-funds-moved statement is present",
-          "condition": "the page says no funds moved",
-          "expected": "the page statement that no funds moved present",
-          "expectedValue": "true",
-          "actual": "true",
-          "passed": true
-        },
-        {
-          "key": "no_persistent_receipt_written",
-          "check": "Checking whether the no-persistent-receipt statement is present",
-          "condition": "the page says no persistent receipt was written",
-          "expected": "the page statement that no persistent receipt was written present",
+          "key": "jordan_approved_decision_history_row",
+          "check": "Checking for Jordan's approved Decision history row",
+          "condition": "The \"Decision history\" table has a row for Jordan with \"Approved by you after review.\"",
+          "expected": "a row for Jordan with \"Approved by you after review.\" in the \"Decision history\" table present",
           "expectedValue": "true",
           "actual": "true",
           "passed": true
@@ -111,24 +57,157 @@
       "likelyFiles": null
     },
     {
-      "test": "tests/kane/demo-blocked-wording_test.md",
-      "title": "A blocked payment says \"Blocked\" everywhere",
+      "test": "tests/kane/demo-walkthrough_test.md",
+      "title": "Play walkthrough runs all three outcomes by itself",
       "route": "/demo",
-      "status": "passed",
-      "durationS": 115,
-      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V4B2ZPR2385DHFEQ5YTKAM/dashboard/share/US_P3UHDPTDQOOJY06X17SDZP86GVU4VQ2ID5F5YEXHGTF0K3AANJ2KXAUEAVOGE03I?type=summary&agentView=true&fqdn=summary-page",
-      "sessionId": "20a6c1c7-2726-4c0e-88e7-5022676b5951",
-      "objective": "## Block an unknown recipient and read every status\nDo not click \"Play walkthrough\". Set the \"Recipient\" field to Mallory and keep the amount at 12. Click \"Check against rails\". The rails must block this proposal, and the user must see one consistent word for it. Verify all of these: the notice says \"Blocked: this recipient is not on the allowed list.\"; the status pill next to the \"Referee decision\" heading says exactly \"Blocked\" (not \"Refused\" or any other word); the receipt's decision line says \"Blocked\"; and there is no \"Approve\" button.",
-      "failingStep": null,
-      "kaneDiagnosis": null,
-      "kaneSummary": null,
-      "checks": [],
-      "likelyFiles": null
+      "status": "failed",
+      "durationS": 96,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V50V18394NZXAKFXA9Y689/dashboard/share/US_9ENOB7M7IKTR78CK75QLKA5Y75EG2Q73J1QMSLY6IGFOH8LEF6I30BR4UILHIMS0?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "e1e54550-9a14-4254-85ea-b5b236468acd",
+      "objective": "## Press play once and watch\nClick \"Play walkthrough\" once and do not click anything else. The walkthrough types each proposal into the form by itself. Verify, in order: a proposal to Alex for 8 credits ends with a receipt \"Alex · 8 credits\" saying \"Executed (mock)\"; then a proposal to Jordan for 15 credits shows the referee status \"Needs your OK\" before it is approved and ends with a receipt \"Jordan · 15 credits\" saying \"Executed (mock)\"; then a proposal to Mallory for 12 credits shows the referee status \"Blocked\" with a receipt \"Mallory · 12 credits\" saying \"Blocked\". Finally verify the notice says the walkthrough is complete.",
+      "failingStep": "Checkpoint assertion failed: \"a proposal to Alex for 8 credits ends with a receipt \"Alex · 8 credits\" saying \"Executed (mock)\"\"",
+      "kaneDiagnosis": "The test waited until the walkthrough finished, then looked for the earlier Alex receipt after the screen had moved on to Mallory.",
+      "kaneSummary": "The walkthrough replaces the visible proposal and receipt as it moves through Alex, Jordan, and Mallory. The test did not save or verify Alex’s result while Alex was on screen, so its final checkpoint expected an earlier screen state that was no longer present.\nUpdate the test to verify and retain each result when it appears: Alex first, Jordan’s approval-needed state and receipt next, then Mallory and the completion notice. Do not assert the Alex receipt only after waiting for completion.",
+      "checks": [
+        {
+          "key": "mallory_12_credits_receipt",
+          "check": "Checking whether the Mallory receipt is present",
+          "condition": "a receipt \"Mallory · 12 credits\" is shown",
+          "expected": "receipt \"Mallory · 12 credits\" present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "mallory_receipt_blocked",
+          "check": "Checking whether the Mallory receipt is blocked",
+          "condition": "the receipt \"Mallory · 12 credits\" says \"Blocked\"",
+          "expected": "receipt \"Mallory · 12 credits\" saying \"Blocked\" present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "mallory_referee_blocked",
+          "check": "Checking whether the Mallory referee status is blocked",
+          "condition": "a proposal to Mallory for 12 credits shows the referee status \"Blocked\"",
+          "expected": "referee status \"Blocked\" for the proposal to Mallory for 12 credits present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "walkthrough_complete_notice",
+          "check": "Checking whether the walkthrough complete notice is present",
+          "condition": "the notice says the walkthrough is complete",
+          "expected": "notice saying the walkthrough is complete present",
+          "expectedValue": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "key": "alex_8_credits_receipt",
+          "check": "Checking whether the Alex receipt is present",
+          "condition": "a receipt \"Alex · 8 credits\" is shown",
+          "expected": "receipt \"Alex · 8 credits\" present",
+          "expectedValue": "true",
+          "actual": "false",
+          "passed": false
+        },
+        {
+          "key": "alex_receipt_executed_mock",
+          "check": "Checking whether the Alex receipt execution status is present",
+          "condition": "the receipt \"Alex · 8 credits\" says \"Executed (mock)\"",
+          "expected": "receipt \"Alex · 8 credits\" saying \"Executed (mock)\" present",
+          "expectedValue": "true",
+          "actual": "false",
+          "passed": false
+        },
+        {
+          "key": "jordan_referee_needs_your_ok",
+          "check": "Checking whether the Jordan referee status is present",
+          "condition": "a proposal to Jordan for 15 credits shows the referee status \"Needs your OK\" before it is approved",
+          "expected": "referee status \"Needs your OK\" for the proposal to Jordan for 15 credits present",
+          "expectedValue": "true",
+          "actual": "false",
+          "passed": false
+        },
+        {
+          "key": "jordan_15_credits_receipt",
+          "check": "Checking whether the Jordan receipt is present",
+          "condition": "a receipt \"Jordan · 15 credits\" is shown",
+          "expected": "receipt \"Jordan · 15 credits\" present",
+          "expectedValue": "true",
+          "actual": "false",
+          "passed": false
+        },
+        {
+          "key": "jordan_receipt_executed_mock",
+          "check": "Checking whether the Jordan receipt execution status is present",
+          "condition": "the receipt \"Jordan · 15 credits\" says \"Executed (mock)\"",
+          "expected": "receipt \"Jordan · 15 credits\" saying \"Executed (mock)\" present",
+          "expectedValue": "true",
+          "actual": "false",
+          "passed": false
+        }
+      ],
+      "likelyFiles": {
+        "byRoute": [
+          "src/app/demo/page.tsx",
+          "src/lib/policy-circuit.ts",
+          "src/lib/demo-config.ts"
+        ],
+        "byPhrase": [
+          {
+            "file": "src/app/demo/page.tsx",
+            "lines": [
+              53,
+              60,
+              74,
+              77,
+              121
+            ],
+            "phrases": [
+              "Executed (mock)",
+              "Needs your OK"
+            ]
+          },
+          {
+            "file": "src/app/rails/page.tsx",
+            "lines": [
+              13
+            ],
+            "phrases": [
+              "Needs your OK"
+            ]
+          },
+          {
+            "file": "src/app/receipts/page.tsx",
+            "lines": [
+              54,
+              59
+            ],
+            "phrases": [
+              "Needs your OK"
+            ]
+          },
+          {
+            "file": "src/components/landing.tsx",
+            "lines": [
+              9,
+              20
+            ],
+            "phrases": [
+              "Needs your OK"
+            ]
+          }
+        ]
+      }
     }
   ],
   "totals": {
     "total": 2,
-    "passed": 2,
-    "failed": 0
+    "passed": 1,
+    "failed": 1
   }
 }
