@@ -44,7 +44,6 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--port") opt.port = Number(next());
   else if (a === "--name") opt.name = next();
   else if (a === "--no-build") opt.build = false;
-  else if (a === "--skip-if-no-creds") opt.skipIfNoCreds = true;
   else if (a === "-h" || a === "--help") { console.log(readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").filter(l => l.startsWith("//")).map(l => l.slice(3)).join("\n")); process.exit(0); }
   else { console.error(`Unknown option: ${a}`); process.exit(2); }
 }
@@ -67,8 +66,7 @@ const fail = (msg, code = 2) => { log(msg); process.exit(code); };
 
 if (!opt.from && (!process.env.LT_USERNAME || !process.env.LT_ACCESS_KEY)) {
   const msg = "LT_USERNAME / LT_ACCESS_KEY are not set (environment or gitignored .env).";
-  if (opt.skipIfNoCreds) { log(`${msg} Skipping the Kane gate.`); process.exit(0); }
-  fail(`${msg} Set them to run the gate, or pass --skip-if-no-creds.`);
+  fail(`${msg} Set them to run the mandatory Kane gate.`);
 }
 const has = cmd => spawnSync("bash", ["-lc", `command -v ${cmd}`], {stdio: "ignore"}).status === 0;
 if (!has("kane-cli")) fail("kane-cli is not on PATH. Install it with: npm install -g @testmuai/kane-cli@0.10.6");
