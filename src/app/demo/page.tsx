@@ -54,7 +54,7 @@ export default function GuidedDemoPage(){
    }
    if(value>REVIEW_LIMIT){
     setStage("review");setNote(`Needs your OK: ${value} credits is above the ${REVIEW_LIMIT}-credit review limit. The walkthrough approves it for you in a moment.`);
-    await wait(2400);if(!live())return;
+    await wait(5000);if(!live())return;
     setStage("approved");setNote("Approved by you. Approval is not execution: a separate mock-execution step follows.");
    }else{
     setStage("approved");setNote(`Within the rails and under the ${REVIEW_LIMIT}-credit review limit, so it is approved without a person. Execution is still a separate step.`);
