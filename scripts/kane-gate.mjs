@@ -33,12 +33,11 @@ const REPORT_MD = path.join(ROOT, "KANE_REPORT.md");
 
 // ---------- args ----------
 const argv = process.argv.slice(2);
-const opt = {from: null, url: null, match: null, tags: null, port: 3100, build: true, name: null};
+const opt = {url: null, match: null, tags: null, port: 3100, build: true, name: null};
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   const next = () => argv[++i];
   if (a === "--url") opt.url = next();
-  else if (a === "--from") opt.from = next();
   else if (a === "--match") opt.match = next();
   else if (a === "--tags") opt.tags = next();
   else if (a === "--port") opt.port = Number(next());
@@ -64,7 +63,7 @@ if (process.env.KANE_ENV_FILE) loadDotEnv(process.env.KANE_ENV_FILE);
 const log = (...m) => console.error("[kane-gate]", ...m);
 const fail = (msg, code = 2) => { log(msg); process.exit(code); };
 
-if (!opt.from && (!process.env.LT_USERNAME || !process.env.LT_ACCESS_KEY)) {
+if (!process.env.LT_USERNAME || !process.env.LT_ACCESS_KEY) {
   const msg = "LT_USERNAME / LT_ACCESS_KEY are not set (environment or gitignored .env).";
   fail(`${msg} Set them to run the mandatory Kane gate.`);
 }
@@ -72,7 +71,7 @@ const has = cmd => spawnSync("bash", ["-lc", `command -v ${cmd}`], {stdio: "igno
 if (!has("kane-cli")) fail("kane-cli is not on PATH. Install it with: npm install -g @testmuai/kane-cli@0.10.6");
 
 // Log in without echoing the key. A stored profile is reused when whoami already works.
-if (!opt.from && spawnSync("kane-cli", ["whoami"], {stdio: "ignore"}).status !== 0) {
+if (spawnSync("kane-cli", ["whoami"], {stdio: "ignore"}).status !== 0) {
   const r = spawnSync("kane-cli", ["login", "--username", process.env.LT_USERNAME, "--access-key", process.env.LT_ACCESS_KEY], {stdio: ["ignore", "ignore", "pipe"]});
   if (r.status !== 0) fail("kane-cli login failed. Check LT_USERNAME / LT_ACCESS_KEY.");
 }
@@ -268,11 +267,6 @@ function finish(stdoutLines, code, baseUrl, credits) {
   log(`${status === "passed" ? "PASS" : "FAIL"}: ${report.totals.passed}/${report.totals.total} Kane tests passed. Report: KANE_REPORT.md`);
   for (const m of members) if (m.shareUrl) log(`  ${m.status.padEnd(7)} ${m.test} → ${m.shareUrl}`);
   process.exit(status === "passed" ? 0 : 1);
-}
-if (opt.from) {
-  const lines = readFileSync(opt.from, "utf8").split("\n").filter(Boolean);
-  const done = lines.map(l => { try { return JSON.parse(l); } catch { return {}; } }).find(e => e.type === "testrun_done");
-  finish(lines, done?.overall_status === "passed" ? 0 : 1, opt.url, null);
 }
 const before = balance();
 const baseUrl = (opt.url ? opt.url : await startApp()).replace(/\/$/, "");
