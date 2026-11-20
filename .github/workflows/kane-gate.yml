@@ -30,7 +30,6 @@ jobs:
       - run: npm ci
       - run: npm test
       - name: Install Kane CLI
-        if: env.LT_USERNAME != '' && env.LT_ACCESS_KEY != ''
         run: npm install -g @testmuai/kane-cli@0.10.6
       - name: Kane gate
         run: npm run kane:gate:ci
