@@ -91,3 +91,35 @@
 .reference-home .ref-about .ref-badge{margin-bottom:22px;padding:6px 16px 6px 6px}
 .reference-home .ref-about-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 @media(max-width:560px){.reference-home .ref-about{padding:44px 20px}.reference-home .ref-about p{font-size:16px}}
+
+/* Demo walkthrough: live steps, counters, rule marks and log (same black/white demo palette). */
+.demo-home .demo-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 18px}
+.demo-home .demo-stats>div{background:#fff;border:1px solid #e4e6ea;border-radius:14px;padding:12px 14px;display:flex;align-items:baseline;gap:10px}
+.demo-home .demo-stats b{font-size:22px;letter-spacing:-.03em;color:#111;font-variant-numeric:tabular-nums}
+.demo-home .demo-stats span{font-size:12px;color:#5c6068}
+.demo-home .demo-steps{list-style:none;margin:0 0 20px;padding:12px 14px;border:1px solid #e4e6ea;border-radius:14px;background:#fafafa;display:grid;gap:9px}
+.demo-home .demo-steps li{display:flex;align-items:center;gap:10px;font-size:13px;color:#5c6068}
+.demo-home .demo-steps li.running,.demo-home .demo-steps li.done{color:#111}
+.demo-home .demo-steps i{flex:0 0 20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;background:#f2f3f5;color:#5c6068;border:1px solid #e4e6ea}
+.demo-home .demo-steps li.done i{background:#111;color:#fff;border-color:#111}
+.demo-home .demo-steps li.running i{border:2px solid #e4e6ea;border-top-color:#111;background:#fff;animation:demo-spin .8s linear infinite}
+.demo-home .demo-steps em{margin-left:auto;font-style:normal;font-size:11px;color:#5c6068;white-space:nowrap}
+@keyframes demo-spin{to{transform:rotate(360deg)}}
+.demo-home .demo-rule>span{transition:background .2s,color .2s}
+.demo-home .demo-rule.mark-pass>span{background:#111;color:#fff}
+.demo-home .demo-rule.mark-flag>span{background:#fff;color:#111;border:2px solid #111}
+.demo-home .demo-rule.mark-fail>span{background:#111;color:#fff;outline:3px solid #e4e6ea}
+.demo-home .demo-rule.mark-checking>span{background:#fff;border:2px solid #e4e6ea;border-top-color:#111;animation:demo-spin .8s linear infinite;color:transparent}
+.demo-home .demo-mark{margin-left:8px;font-size:11px;font-weight:500;color:#5c6068;padding:2px 8px;border-radius:999px;background:#f2f3f5}
+.demo-home .demo-rule.mark-fail .demo-mark,.demo-home .demo-rule.mark-flag .demo-mark{background:#111;color:#fff}
+.demo-home .demo-log-wrap{margin-top:22px;border:1px solid #e4e6ea;border-radius:14px;overflow:hidden}
+.demo-home .demo-log-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #e4e6ea;background:#fafafa;font-size:12px}
+.demo-home .demo-log-head span{color:#5c6068;font-size:11px}
+.demo-home .demo-log{list-style:none;margin:0;padding:10px 14px;max-height:260px;overflow:auto;font-family:ui-monospace,monospace;font-size:11px;line-height:1.55;display:grid;gap:4px}
+.demo-home .demo-log li{display:grid;grid-template-columns:auto 64px 1fr;gap:10px;color:#111;animation:demo-in .25s ease}
+.demo-home .demo-log time{color:#9aa0a8}
+.demo-home .demo-log b{font-weight:600;color:#5c6068}
+.demo-home .demo-log b.who-referee,.demo-home .demo-log b.who-you{color:#111}
+@keyframes demo-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@media (max-width:720px){.demo-home .demo-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.demo-home .demo-log li{grid-template-columns:56px 1fr}.demo-home .demo-log time{display:none}}
+@media (prefers-reduced-motion:reduce){.demo-home .demo-steps li.running i,.demo-home .demo-rule.mark-checking>span{animation:none}.demo-home .demo-log li{animation:none}}

@@ -3,12 +3,16 @@
 import {useEffect, useRef} from "react";
 
 /**
- * Soft orange spotlight that follows the cursor (or finger) 1:1.
- * A single fixed layer: no lag, no trail, never intercepts clicks.
- * It blends with `multiply`, so on light surfaces it tints like a light behind the page
- * while dark text stays dark. Fades out when the pointer leaves or the touch ends.
+ * Orange "net" spotlight: a grid of lines and knots that lights up around the cursor
+ * (or finger) and fades out with distance, over a soft orange glow.
+ * Fixed layers, positioned from CSS variables: follows 1:1, no lag, no trail, never
+ * intercepts clicks. Fades out when the pointer leaves or the touch ends.
  * Hidden entirely when the user prefers reduced motion.
  */
+const R = 260; // spotlight radius in px
+const CELL = 26; // net cell size in px
+const at = `circle ${R}px at var(--mx, -999px) var(--my, -999px)`;
+const spot = `radial-gradient(${at}, #000 0%, rgba(0,0,0,.85) 35%, rgba(0,0,0,.35) 65%, transparent 100%)`;
 export function CursorGlow() {
  const ref = useRef<HTMLDivElement>(null);
  useEffect(() => {
@@ -44,9 +48,16 @@ export function CursorGlow() {
    window.removeEventListener("blur", hide);
   };
  }, []);
+ const layer: React.CSSProperties = {position: "absolute", inset: 0};
  return <div ref={ref} aria-hidden="true" data-cursor-glow="" style={{
-  position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2147483000, opacity: 0,
-  transition: "opacity .35s ease", mixBlendMode: "multiply",
-  background: "radial-gradient(circle 380px at var(--mx, -999px) var(--my, -999px), rgba(255,150,90,0.16), transparent 70%)",
- }}/>;
+  position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2147483000, opacity: 0, transition: "opacity .3s ease",
+ }}>
+  <div style={{...layer, mixBlendMode: "multiply", background: `radial-gradient(${at}, rgba(255,150,90,0.30), rgba(255,150,90,0.10) 55%, transparent 80%)`}}/>
+  <div data-cursor-net="" style={{...layer,
+   backgroundImage: `radial-gradient(circle, rgba(255,112,40,.95) 0 1.6px, transparent 2.2px), linear-gradient(rgba(255,128,60,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,128,60,.55) 1px, transparent 1px)`,
+   backgroundSize: `${CELL}px ${CELL}px`,
+   backgroundPosition: `${-CELL / 2}px ${-CELL / 2}px, 0 0, 0 0`,
+   WebkitMaskImage: spot, maskImage: spot,
+  }}/>
+ </div>;
 }
