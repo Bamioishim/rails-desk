@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useDesk } from "@/components/desk";
 
 const outcomeLabel = { approved: "approved", needs_review: "needs your OK", blocked: "blocked", refused: "refused" } as const;
-const outcomeTag = (o: keyof typeof outcomeLabel) => (o === "approved" ? "tag" : o === "needs_review" ? "tag neutral" : "tag red");
+const outcomeTag = (o: keyof typeof outcomeLabel) => (o === "approved" ? "tag green" : o === "needs_review" ? "tag neutral" : "tag red");
 
 export default function ReceiptsPage() {
   const { receipts, legacyReceipts, receiptStatus, receiptError, refreshReceipts } = useStore();
@@ -60,7 +60,7 @@ export default function ReceiptsPage() {
       {pending.length === 0 ? <div className="empty">Nothing waiting. Proposals above your review limit will appear here.</div> : <div className="receipt-list">{pending.map((p) => <div className="receipt-row" key={p.id}><div><div className="receipt-title">{p.recipient} · {p.amount} credits</div><div className="receipt-meta">{p.reason || "No reason given"} · {p.reasons.join(" ")}</div></div><div className="action-row"><button className="button button-small" disabled={busy === p.id} onClick={() => void act(p.id, "approve")}>Approve</button><button className="button ghost button-small" disabled={busy === p.id} onClick={() => void act(p.id, "refuse")}>Refuse</button></div></div>)}</div>}
     </div>
     <div className="panel" style={{ marginTop: 15 }}>
-      <div className="section-head"><div><h2 className="panel-title">Decision history</h2><div className="panel-desc">Ordered oldest to newest. SHA-256 links recomputed by the server.</div></div><span className={desk.verification.valid ? "tag" : "tag red"}>{desk.verification.valid ? "CHAIN VALID" : `CHAIN BROKEN AT #${desk.verification.brokenAt}`}</span></div>
+      <div className="section-head"><div><h2 className="panel-title">Decision history</h2><div className="panel-desc">Ordered oldest to newest. SHA-256 links recomputed by the server.</div></div><span className={desk.verification.valid ? "tag green" : "tag red"}>{desk.verification.valid ? "CHAIN VALID" : `CHAIN BROKEN AT #${desk.verification.brokenAt}`}</span></div>
       {desk.receipts.length === 0 ? <div className="empty">No receipts yet. <Link href="/rails#connect">Connect your agent</Link> or send a test proposal.</div> : <div className="table-wrap"><table><thead><tr><th>#</th><th>Decision</th><th>Recipient</th><th>Amount</th><th>Decision reason</th><th>Hash</th></tr></thead><tbody>{desk.receipts.map((r) => <tr key={r.id}><td className="mono">{String(r.index).padStart(3, "0")}</td><td><span className={outcomeTag(r.outcome)}>{outcomeLabel[r.outcome]}</span></td><td>{r.recipient}</td><td>{r.amount}</td><td style={{ maxWidth: 220 }}>{r.detail}</td><td><span className="mono" title={r.id}>{r.hash.slice(0, 16)}…</span></td></tr>)}</tbody></table></div>}
     </div>
     </>}

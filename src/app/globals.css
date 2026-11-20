@@ -123,3 +123,47 @@
 @keyframes demo-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 @media (max-width:720px){.demo-home .demo-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.demo-home .demo-log li{grid-template-columns:56px 1fr}.demo-home .demo-log time{display:none}}
 @media (prefers-reduced-motion:reduce){.demo-home .demo-steps li.running i,.demo-home .demo-rule.mark-checking>span{animation:none}.demo-home .demo-log li{animation:none}}
+
+/* App pages (/rails, /receipts, /about): same black/white look as the landing page and demo. */
+.app-home{--bg:#fafafa;--paper:#fff;--panel:#fff;--panel2:#f2f3f5;--line:#e4e6ea;--muted:#5c6068;--text:#111;--brown:#111;--orange:#111;--orange-dark:#111;--green:#2f7a52;--green2:#eef6f1;--red:#b4382c;--red-bg:#fbeeec;--amber:#8a5a12;min-height:100vh;background:#fafafa;color:#111}
+.app-home .ref-links a.active{color:#111;font-weight:600}
+.app-home .app-subnav{display:none}
+@media(max-width:719px){.app-home .app-subnav{display:block;border-top:1px solid #e4e6ea}.app-home .app-subnav .ref-wrap{display:flex;gap:6px;overflow-x:auto;padding-top:8px;padding-bottom:8px}.app-home .app-subnav a{flex:0 0 auto;padding:7px 13px;border-radius:999px;font-size:13px;color:#5c6068}.app-home .app-subnav a.active{background:#111;color:#fff}}
+.app-home .content{width:auto;max-width:1080px;margin:0 auto;padding:48px 20px 76px}
+.app-home .eyebrow{color:#5c6068;font-weight:500;letter-spacing:.4px;font-size:12px}
+.app-home .page-title{font-weight:600;letter-spacing:-.045em;line-height:1.02;font-size:clamp(34px,5vw,52px)}
+.app-home .page-sub,.app-home .panel-desc,.app-home .stat-label,.app-home .hint,.app-home .receipt-meta,.app-home .empty{color:#5c6068}
+.app-home .page-sub{font-size:15px;line-height:1.6}
+.app-home .panel-desc,.app-home .hint{font-size:12px}
+.app-home .stat-foot{color:#8a8f97;font-size:11px}
+.app-home .stat-card,.app-home .panel{background:#fff;border:1px solid #e4e6ea;border-radius:20px;box-shadow:none}
+.app-home .panel-title{font-weight:600;letter-spacing:-.03em}
+.app-home .button{background:#111;color:#fff;border-radius:999px;box-shadow:none;font-weight:600;font-size:13px;padding:11px 18px}
+.app-home .button:hover{background:#333}
+.app-home .button-small{padding:9px 14px;font-size:12px}
+.app-home .button.ghost{background:#fff;color:#111;border:1px solid #e4e6ea}
+.app-home .button.ghost:hover{background:#f2f3f5}
+.app-home .button.danger{background:#fbeeec;color:#b4382c}
+.app-home .tag{background:#f2f3f5;color:#111;border:1px solid #e4e6ea;font-weight:600;letter-spacing:.6px;font-size:10px}
+.app-home .tag.neutral{background:#fdf6e9;color:#8a5a12;border-color:#f1e2c4}
+.app-home .tag.red{background:#fbeeec;color:#b4382c;border-color:#f3d6d2}
+.app-home .field label{color:#111;font-size:13px;font-weight:600}
+.app-home .field input,.app-home .field textarea{border:1px solid #e4e6ea;border-radius:12px;background:#fff;color:#111;padding:13px 14px}
+.app-home .field input:focus,.app-home .field textarea:focus{border-color:#5c6068;box-shadow:0 0 0 2px #e4e6ea}
+.app-home .notice{background:#eef6f1;color:#2f6b4a;border:1px solid #d7ebdf;border-radius:14px;font-size:12px}
+.app-home .notice.warn{background:#fbeeec;color:#9b3227;border-color:#f3d6d2}
+.app-home .rule-icon{background:#f2f3f5;color:#111;border-radius:50%}
+.app-home .step{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid #e4e6ea}.app-home .step:last-of-type{border-bottom:0}.app-home .step-num{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#f2f3f5;color:#111;font-size:12px}.app-home .step strong{font-size:13px}.app-home .step p{margin:4px 0 0;color:#5c6068;font-size:12px;line-height:1.5}
+.app-home table{width:100%;border-collapse:collapse;font-size:12px}.app-home th,.app-home td{text-align:left;padding:10px 8px;border-bottom:1px solid #e4e6ea;vertical-align:top}
+.app-home .mono{color:#111}
+.app-home .hash{color:#5c6068}
+.app-home .receipt-title,.app-home .receipt-amount,.app-home .stat-value{color:#111}
+.app-home .status-pill{background:#eef6f1;color:#2f6b4a}
+.app-home .status-pill.refused,.app-home .status-pill.cancelled{background:#fbeeec;color:#b4382c}
+.app-home table th{color:#5c6068}
+.app-home .recipient-chip{background:#fff;color:#5c6068}
+@media(max-width:800px){.app-home .layout-grid{grid-template-columns:1fr}.app-home .stat-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.app-home .content{padding:32px 16px 56px}.app-home .page-head{flex-direction:column;align-items:flex-start;gap:14px}.app-home .panel{padding:18px;border-radius:18px}.app-home .table-wrap{overflow-x:auto}}
+.app-home h2.panel-title{font-size:21px;font-weight:600;letter-spacing:-.03em;line-height:1.2}
+.app-home h1.page-title{font-weight:600}
+.app-home .tag.green{background:#eef6f1;color:#2f6b4a;border-color:#d7ebdf}
