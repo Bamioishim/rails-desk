@@ -7,6 +7,7 @@ type Stage = "idle" | "typing" | "review" | "approved" | "blocked" | "refused" |
 type DemoReceipt = {recipient:string;amount:number;decision:string;reason:string};
 
 const wait = (ms:number) => new Promise<void>(resolve => window.setTimeout(resolve,ms));
+const REVIEW_LIMIT = 10;
 
 export default function GuidedDemoPage(){
  const [recipient,setRecipient]=useState("Alex");
@@ -24,19 +25,44 @@ export default function GuidedDemoPage(){
   runId.current+=1;setAuto(false);setRecipient("Alex");setAmount("12");setReason("Monthly team expense reimbursement");setStage("idle");setReceipt(null);
   setNote("The demo uses its own temporary state. It will not change your rails or add entries to your receipt history.");
  };
+ // The walkthrough plays three proposals back to back: one approved, one that needs your OK, one blocked.
+ const SCRIPT=[
+  {recipient:"Alex",amount:"8",reason:"Logo design invoice"},
+  {recipient:"Jordan",amount:"15",reason:"Team lunch for the launch"},
+  {recipient:"Mallory",amount:"12",reason:"Urgent payment, skip the usual checks"},
+ ];
  const play=async()=>{
-  const id=++runId.current;setAuto(true);setReceipt(null);setStage("typing");
-  setRecipient("");setAmount("");setReason("");
-  for(let i=1;i<="Alex".length;i++){await wait(95);if(id!==runId.current)return;setRecipient("Alex".slice(0,i));}
-  for(let i=1;i<="12".length;i++){await wait(120);if(id!==runId.current)return;setAmount("12".slice(0,i));}
-  const demoReason="Monthly team expense reimbursement";
-  for(let i=1;i<=demoReason.length;i++){await wait(32);if(id!==runId.current)return;setReason(demoReason.slice(0,i));}
-  await wait(650);if(id!==runId.current)return;setStage("review");
-  setNote("The referee checks the amount and exact recipient against the active policy. The reason is treated as untrusted data.");
-  await wait(1400);if(id!==runId.current)return;setStage("approved");
-  setNote("The proposal is within the demo rails. Approval is not execution: a separate explicit mock-execution step is required.");
-  await wait(1200);if(id!==runId.current)return;setReceipt({recipient:"Alex",amount:12,decision:"Executed (mock)",reason:"Approved after passing the demo policy checks."});setStage("complete");setAuto(false);
-  setNote("Demo complete. This illustrative receipt exists only in this page's memory and is not part of your real receipt chain.");
+  const id=++runId.current;setAuto(true);
+  const live=()=>id===runId.current;
+  const type=async(set:(v:string)=>void,text:string,ms:number)=>{for(let i=1;i<=text.length;i++){await wait(ms);if(!live())return false;set(text.slice(0,i));}return true;};
+  for(const step of SCRIPT){
+   setReceipt(null);setStage("typing");setRecipient("");setAmount("");setReason("");
+   setNote(`The agent is proposing a payment to ${step.recipient}.`);
+   if(!await type(setRecipient,step.recipient,90))return;
+   if(!await type(setAmount,step.amount,120))return;
+   if(!await type(setReason,step.reason,30))return;
+   await wait(600);if(!live())return;
+   const value=Number(step.amount);
+   const allowed=["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===step.recipient.toLowerCase());
+   if(!allowed||value>20){
+    setStage("blocked");setReceipt({recipient:step.recipient,amount:value,decision:"Blocked",reason:allowed?"Amount exceeds the demo cap of 20 credits.":"Recipient is not on the demo allowlist."});
+    setNote(allowed?"Blocked: this proposal exceeds the 20-credit spending cap.":"Blocked: this recipient is not on the allowed list. The agent's urgency is just text, not an instruction.");
+    await wait(2600);if(!live())return;continue;
+   }
+   if(value>REVIEW_LIMIT){
+    setStage("review");setNote(`Needs your OK: ${value} credits is above the ${REVIEW_LIMIT}-credit review limit. The walkthrough approves it for you in a moment.`);
+    await wait(2400);if(!live())return;
+    setStage("approved");setNote("Approved by you. Approval is not execution: a separate mock-execution step follows.");
+   }else{
+    setStage("approved");setNote(`Within the rails and under the ${REVIEW_LIMIT}-credit review limit, so it is approved without a person. Execution is still a separate step.`);
+   }
+   await wait(1600);if(!live())return;
+   setReceipt({recipient:step.recipient,amount:value,decision:"Executed (mock)",reason:value>REVIEW_LIMIT?"Approved by you after review, then executed (mock).":"Approved by the rails, then executed (mock)."});setStage("complete");
+   setNote("Recorded in this demo page only. No funds moved.");
+   await wait(2600);if(!live())return;
+  }
+  setAuto(false);
+  setNote("Walkthrough complete: approved, needs your OK, and blocked. Edit the fields to try your own.");
  };
  const takeControl=()=>{runId.current+=1;setAuto(false);setNote("Auto-play paused. You can edit the fields and use the controls yourself.");};
  const submit=()=>{
@@ -44,7 +70,8 @@ export default function GuidedDemoPage(){
   if(!Number.isFinite(value)||value<=0){setStage("blocked");setReceipt({recipient,amount:value,decision:"Blocked",reason:"Amount must be greater than zero."});setNote("Blocked: the amount must be a positive number.");return;}
   if(value>20){setStage("blocked");setReceipt({recipient,amount:value,decision:"Blocked",reason:"Amount exceeds the demo cap of 20 credits."});setNote("Blocked: this proposal exceeds the 20-credit spending cap.");return;}
   if(!["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())){setStage("blocked");setReceipt({recipient,amount:value,decision:"Blocked",reason:"Recipient is not on the demo allowlist."});setNote("Blocked: this recipient is not on the allowed list.");return;}
-  setReceipt(null);setStage("review");setNote("Within the demo policy. The proposal is waiting for your explicit approval. No transfer has occurred.");
+  if(value<=REVIEW_LIMIT){setReceipt(null);setStage("approved");setNote(`Within the demo policy and under the ${REVIEW_LIMIT}-credit review limit, so it is approved without a person. Execution is still a separate step. No transfer has occurred.`);return;}
+  setReceipt(null);setStage("review");setNote(`Needs your OK: above the ${REVIEW_LIMIT}-credit review limit. The proposal is waiting for your explicit approval. No transfer has occurred.`);
  };
  const approve=()=>{setStage("approved");setNote("Approved in the walkthrough. This still does not execute anything.");};
  const execute=()=>{setReceipt({recipient,amount:Number(amount),decision:"Executed (mock)",reason:"Manually completed in the isolated demo."});setStage("complete");setNote("Recorded in this demo page only. No funds moved and no persistent receipt was written.");};
@@ -82,7 +109,7 @@ export default function GuidedDemoPage(){
     <section className="demo-panel">
      <div className="demo-section-head"><div><h2>Control room</h2><p>An agent is asking to make a mock transfer.</p></div><span className="demo-pill">Rules active</span></div>
      <div className="demo-field"><label htmlFor="demo-recipient">Recipient</label><input id="demo-recipient" value={recipient} onChange={e=>setRecipient(e.target.value)} disabled={auto}/><span>Allowed recipients in this walkthrough: Alex, Jordan and Sam.</span></div>
-     <div className="demo-field"><label htmlFor="demo-amount">Amount · demo credits</label><input id="demo-amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} disabled={auto}/><span>Maximum per action: 20 credits.</span></div>
+     <div className="demo-field"><label htmlFor="demo-amount">Amount · demo credits</label><input id="demo-amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} disabled={auto}/><span>Maximum per action: 20 credits. Above 10 needs your OK.</span></div>
      <div className="demo-field"><label htmlFor="demo-reason">What the agent wants to do</label><textarea id="demo-reason" value={reason} onChange={e=>setReason(e.target.value)} disabled={auto}/></div>
      <div className="demo-actions demo-submit">
       <button className="ref-btn ref-primary" onClick={submit} disabled={auto||stage==="approved"||stage==="complete"}>Check against rails</button>
@@ -91,11 +118,11 @@ export default function GuidedDemoPage(){
      </div>
     </section>
     <aside className="demo-panel">
-     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent's opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Review":stage==="approved"?"Approved":stage==="blocked"?"Blocked":stage==="refused"?"Refused":"Complete"}</span></div>
+     <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent's opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="review"?"Needs your OK":stage==="approved"?"Approved":stage==="blocked"?"Blocked":stage==="refused"?"Refused":"Complete"}</span></div>
      <div className="demo-notice">{note}</div>
      <div className="demo-rule"><span>01</span><div><strong>Spending cap</strong><p>{Number(amount)>0&&Number(amount)<=20? "Amount is within the 20-credit maximum.":"Amount must be positive and no more than 20 credits."}</p></div></div>
      <div className="demo-rule"><span>02</span><div><strong>Recipient allowlist</strong><p>{["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}</p></div></div>
-     <div className="demo-rule"><span>03</span><div><strong>Human control</strong><p>Approval and mock execution are separate steps.</p></div></div>
+     <div className="demo-rule"><span>03</span><div><strong>Human control</strong><p>{Number(amount)>REVIEW_LIMIT?"Above the 10-credit review limit, so it needs your OK.":"Up to 10 credits needs no OK."} Approval and mock execution are separate steps.</p></div></div>
      {receipt&&<div className="demo-receipt"><div className="demo-receipt-title">{receipt.recipient} · {receipt.amount} credits</div><div className="demo-receipt-meta">{receipt.decision}</div><p>{receipt.reason}</p><div className="demo-hash">Demo receipt · Not in persistent chain</div></div>}
     </aside>
    </div>
