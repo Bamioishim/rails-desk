@@ -1,5 +1,11 @@
 ---
-description: Kane CLI closed-loop gate. Run after every code change and fix until green.
+description: Mandatory Kane completion gate. No current PASS means the task is not done.
 alwaysApply: true
 ---
-After changing code in this repo, run `npm run kane:gate`. If it exits non-zero, open `KANE_REPORT.md`, follow its "Fix request for the coding agent" section, fix the app (or the test only when Kane's diagnosis says the test is wrong), and rerun until the report says PASS. Commit `KANE_REPORT.md` and `.kane/last-report.json` with the change. Full rules: AGENTS.md.
+**Absolute completion requirement:** You are not done until the latest, fresh `KANE_REPORT.md` explicitly says `PASS` for the exact code being evaluated.
+
+After the final change, run `npm test`, `npm run build`, then `npm run kane:gate`. Read the report and verify its timestamp and commit match the code being evaluated.
+
+A missing, stale, skipped, incomplete, failing, or error report means the task is **not verified**. Fix the cause and rerun. Never fabricate or manually edit Kane results, never claim completion, and never recommend pushing, merging, or deploying without a current PASS. If Kane cannot run because of missing credentials or environment limitations, state that and leave the task unverified. A skipped run is not a pass.
+
+Full rules: `AGENTS.md`.
