@@ -16,13 +16,14 @@ export default function GuidedDemoPage(){
  const [stage,setStage]=useState<Stage>("idle");
  const [auto,setAuto]=useState(false);
  const [receipt,setReceipt]=useState<DemoReceipt|null>(null);
+ const [history,setHistory]=useState<DemoReceipt[]>([]);
  const [note,setNote]=useState("The demo uses its own temporary state. It will not change your rails or add entries to your receipt history.");
  const runId=useRef(0);
 
  useEffect(()=>()=>{runId.current+=1;},[]);
 
  const reset=()=>{
-  runId.current+=1;setAuto(false);setRecipient("Alex");setAmount("12");setReason("Monthly team expense reimbursement");setStage("idle");setReceipt(null);
+  runId.current+=1;setAuto(false);setRecipient("Alex");setAmount("12");setReason("Monthly team expense reimbursement");setStage("idle");setReceipt(null);setHistory([]);
   setNote("The demo uses its own temporary state. It will not change your rails or add entries to your receipt history.");
  };
  // The walkthrough plays three proposals back to back: one approved, one that needs your OK, one blocked.
@@ -35,8 +36,9 @@ export default function GuidedDemoPage(){
   const id=++runId.current;setAuto(true);
   const live=()=>id===runId.current;
   const type=async(set:(v:string)=>void,text:string,ms:number)=>{for(let i=1;i<=text.length;i++){await wait(ms);if(!live())return false;set(text.slice(0,i));}return true;};
+  const done:DemoReceipt[]=[];setHistory([]);
   for(const step of SCRIPT){
-   setReceipt(null);setStage("typing");setRecipient("");setAmount("");setReason("");
+   setHistory([...done]);setReceipt(null);setStage("typing");setRecipient("");setAmount("");setReason("");
    setNote(`The agent is proposing a payment to ${step.recipient}.`);
    if(!await type(setRecipient,step.recipient,90))return;
    if(!await type(setAmount,step.amount,120))return;
@@ -47,7 +49,8 @@ export default function GuidedDemoPage(){
    if(!allowed||value>20){
     setStage("blocked");setReceipt({recipient:step.recipient,amount:value,decision:"Blocked",reason:allowed?"Amount exceeds the demo cap of 20 credits.":"Recipient is not on the demo allowlist."});
     setNote(allowed?"Blocked: this proposal exceeds the 20-credit spending cap.":"Blocked: this recipient is not on the allowed list. The agent's urgency is just text, not an instruction.");
-    await wait(2600);if(!live())return;continue;
+    done.push({recipient:step.recipient,amount:value,decision:"Blocked",reason:allowed?"Amount exceeds the demo cap of 20 credits.":"Recipient is not on the demo allowlist."});
+   await wait(2600);if(!live())return;continue;
    }
    if(value>REVIEW_LIMIT){
     setStage("review");setNote(`Needs your OK: ${value} credits is above the ${REVIEW_LIMIT}-credit review limit. The walkthrough approves it for you in a moment.`);
@@ -57,7 +60,8 @@ export default function GuidedDemoPage(){
     setStage("approved");setNote(`Within the rails and under the ${REVIEW_LIMIT}-credit review limit, so it is approved without a person. Execution is still a separate step.`);
    }
    await wait(1600);if(!live())return;
-   setReceipt({recipient:step.recipient,amount:value,decision:"Executed (mock)",reason:value>REVIEW_LIMIT?"Approved by you after review, then executed (mock).":"Approved by the rails, then executed (mock)."});setStage("complete");
+   const executed:DemoReceipt={recipient:step.recipient,amount:value,decision:"Executed (mock)",reason:value>REVIEW_LIMIT?"Needed your OK (above the review limit), approved, then executed (mock).":"Approved by the rails, then executed (mock)."};
+   setReceipt(executed);done.push(executed);setStage("complete");
    setNote("Recorded in this demo page only. No funds moved.");
    await wait(2600);if(!live())return;
   }
@@ -123,6 +127,7 @@ export default function GuidedDemoPage(){
      <div className="demo-rule"><span>01</span><div><strong>Spending cap</strong><p>{Number(amount)>0&&Number(amount)<=20? "Amount is within the 20-credit maximum.":"Amount must be positive and no more than 20 credits."}</p></div></div>
      <div className="demo-rule"><span>02</span><div><strong>Recipient allowlist</strong><p>{["Alex","Jordan","Sam"].some(name=>name.toLowerCase()===recipient.trim().toLowerCase())? "Recipient is on the walkthrough allowlist.":"Recipient is not on the walkthrough allowlist."}</p></div></div>
      <div className="demo-rule"><span>03</span><div><strong>Human control</strong><p>{Number(amount)>REVIEW_LIMIT?"Above the 10-credit review limit, so it needs your OK.":"Up to 10 credits needs no OK."} Approval and mock execution are separate steps.</p></div></div>
+     {history.map((r,i)=><div className="demo-receipt" key={i}><div className="demo-receipt-title">{r.recipient} · {r.amount} credits</div><div className="demo-receipt-meta">{r.decision}</div><p>{r.reason}</p><div className="demo-hash">Demo receipt · Not in persistent chain</div></div>)}
      {receipt&&<div className="demo-receipt"><div className="demo-receipt-title">{receipt.recipient} · {receipt.amount} credits</div><div className="demo-receipt-meta">{receipt.decision}</div><p>{receipt.reason}</p><div className="demo-hash">Demo receipt · Not in persistent chain</div></div>}
     </aside>
    </div>
