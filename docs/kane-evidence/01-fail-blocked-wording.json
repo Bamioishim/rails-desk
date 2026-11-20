@@ -1,0 +1,58 @@
+{
+  "tool": "kane-gate",
+  "kaneCli": "0.10.6",
+  "generatedAt": "2026-11-20T00:02:02.984Z",
+  "commit": "aeaaaaf",
+  "srcDirty": false,
+  "status": "failed",
+  "baseUrl": "http://127.0.0.1:3100",
+  "executionId": "04bb2e3e-e00e-47c5-8e8e-4362bbbe47cb",
+  "kaneExitCode": 1,
+  "credits": {
+    "before": 663.2329,
+    "after": 644.0218
+  },
+  "members": [
+    {
+      "test": "tests/kane/demo-blocked-wording_test.md",
+      "title": "A blocked payment says \"Blocked\" everywhere",
+      "route": "/demo",
+      "status": "failed",
+      "durationS": 59,
+      "shareUrl": "https://test-manager.lambdatest.com/projects/01M7TXC9HAMFHFKZW2RB009S89/test-cases/01M7V42Y8RGH4SV1G359VKGHA9/dashboard/share/US_P7CB193IJEGDZKRFM5YY8NAVGX0FNX37A7XTQO2DMU1W4TZEJYRCZDUVI8RQ1ZSI?type=summary&agentView=true&fqdn=summary-page",
+      "sessionId": "2104677a-ff1d-41c5-a23d-4e078a8509dc",
+      "objective": "## Block an unknown recipient and read every status\nDo not click \"Play walkthrough\". Set the \"Recipient\" field to Mallory and keep the amount at 12. Click \"Check against rails\". The rails must block this proposal, and the user must see one consistent word for it. Verify all of these: the notice says \"Blocked: this recipient is not on the allowed list.\"; the status pill next to the \"Referee decision\" heading says exactly \"Blocked\" (not \"Refused\" or any other word); the receipt's decision line says \"Blocked\"; and there is no \"Approve\" button.",
+      "failingStep": "The completed check displays Refused, not the required Blocked, so checkpoint analysis would terminally fail.",
+      "kaneDiagnosis": "A proposal for disallowed recipient Mallory was rejected, but the completed check showed “Refused” rather than the required consistent status “Blocked.”",
+      "kaneSummary": "The check result uses the wrong decision word for a recipient who is not on the allowed list. This makes the decision status inconsistent with the required blocked notice, status pill, and receipt wording.\nUpdate the rejected-recipient decision state so the notice, Referee decision status pill, and receipt all say exactly “Blocked,” and keep the Approve button hidden.\nevidence: objective_contradiction: The completed check displays Refused, not the required Blocked, so checkpoint analysis would terminally fail.",
+      "checks": [],
+      "likelyFiles": {
+        "byRoute": [
+          "src/app/demo/page.tsx",
+          "src/lib/policy-circuit.ts",
+          "src/lib/demo-config.ts"
+        ],
+        "byPhrase": [
+          {
+            "file": "src/app/demo/page.tsx",
+            "lines": [
+              44,
+              45,
+              46,
+              51,
+              94
+            ],
+            "phrases": [
+              "Refused"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1
+  }
+}
