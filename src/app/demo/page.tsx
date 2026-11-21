@@ -208,7 +208,7 @@ export default function GuidedDemoPage(){
      <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent&apos;s opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="checking"?"Checking":stage==="review"?"Needs your OK":stage==="approved"?"Approved":stage==="blocked"?"Blocked":stage==="refused"?"Refused":"Complete"}</span></div>
      <div className="demo-notice">{note}</div>
      {rules.map(([k,n,title])=><div className={`demo-rule mark-${marks[k]}`} key={k}><span>{markIcon[marks[k]]??n}</span><div><strong>{title}{marks[k]!=="idle"&&<small className="demo-mark">{markLabel[marks[k]]}</small>}</strong><p>{ruleText[k]}</p></div></div>)}
-     {receipts.slice().reverse().map(r=><div className="demo-receipt" key={r.id}><div className="demo-receipt-title">{r.recipient} · {r.amount} credits</div><div className="demo-receipt-meta">{r.decision}</div><p>{r.reason}</p><div className="demo-hash">{r.id} · {r.hash} · Simulated demo receipt · SHA-256 verified in the shared chain</div></div>)}
+     {receipts.slice().reverse().map(r=><div className="demo-receipt" key={r.id}><div className="demo-receipt-title">{r.recipient} · {r.amount} credits</div><div className="demo-receipt-meta">{r.decision}</div><p>{r.reason}</p><div className="demo-hash">{r.id} · {r.hash} · Simulated demo receipt · SHA-256 recorded</div><Link href={`/receipts#receipt-${r.id}`}>Check this receipt in Receipts →</Link></div>)}
     </aside>
    </div>
    <p className="demo-footnote">This walkthrough uses fixed demo rules and records simulated outcomes in your shared, server-backed receipt chain. It does not alter your configured rails or move funds.</p>
