@@ -19,7 +19,7 @@ function Copy({ text, name }: { text: string; name: string }) {
 
 export default function RailsPage() {
   const { setRails } = useStore();
-  const d = useDesk();
+  const d = useDesk(4000);
   const [cap, setCap] = useState("20");
   const [review, setReview] = useState("10");
   const [names, setNames] = useState("Alex\nJordan\nSam");
@@ -80,5 +80,16 @@ export default function RailsPage() {
       <div className="action-row">{TESTS.map((t) => <button key={t.recipient} type="button" className="button ghost button-small" disabled={!d.desk} onClick={() => void sendTest(t)}>{`Test: ${t.recipient} · ${t.amount}`}</button>)}<Link className="button button-small" href="/receipts">Open receipts{d.desk?.pending ? ` (${d.desk.pending} need your OK)` : ""}</Link></div>
       {test && <div className="notice" role="status" style={{ marginTop: 12 }}>{test}</div>}
     </div>
+
+    <section className="panel" style={{ marginTop: 15 }} id="control-room">
+      <div className="section-head"><div><div className="eyebrow">OPEN APP / CONTROL ROOM</div><h2 className="panel-title">Live activity</h2><div className="panel-desc">Server-recorded proposal decisions and demo activity. Refreshes every 4 seconds while this page is open.</div></div><span className="tag">{d.desk?.receipts.length ?? 0} EVENTS</span></div>
+      {d.desk ? <>
+        <div className="action-row" style={{ marginBottom: 14 }}><span className="tag">MAX {d.desk.rules.maxPerAction} CREDITS</span><span className="tag">REVIEW ABOVE {d.desk.rules.reviewLimit}</span><span className="tag">{d.desk.rules.allowedRecipients.length} ALLOWED RECIPIENTS</span><span className="tag">{d.desk.pending} PENDING REVIEW</span><Link className="button button-small" href="/receipts">View all receipts →</Link></div>
+        <div className="section-head"><div><strong style={{ fontSize: 12 }}>Recent activity</strong><div className="panel-desc">The newest 12 events from your persistent receipt chain.</div></div><button type="button" className="button ghost button-small" onClick={() => void d.refresh()}>Refresh now</button></div>
+        {d.desk.receipts.length === 0 ? <div className="empty">No activity yet. Connect an agent or run a demo walkthrough to see events here.</div> : <div className="receipt-list">{d.desk.receipts.slice().reverse().slice(0, 12).map((r) => <div className="receipt-row" key={r.id}><div><div className="receipt-title">{r.source === "demo" ? "Demo · " : "App · "}{r.event.replaceAll("_", " ")}</div><div className="receipt-meta">{new Date(r.at).toLocaleString()} · {r.recipient} · {r.amount} credits · {r.detail}</div><div className="receipt-meta mono">{r.hash.slice(0, 20)}…</div></div><span className={r.outcome === "approved" ? "status approved" : r.outcome === "blocked" || r.outcome === "refused" ? "status blocked" : "status review"}>{label(r.outcome)}</span></div>)}</div>}
+        <div className="section-head" style={{ marginTop: 18 }}><div><strong style={{ fontSize: 12 }}>Recent proposals</strong><div className="panel-desc">What your connected agent has submitted.</div></div></div>
+        {d.desk.proposals.length === 0 ? <div className="empty">No proposals submitted yet. Use the agent API or the test buttons above.</div> : <div className="receipt-list">{d.desk.proposals.slice().reverse().slice(0, 8).map((p) => <div className="receipt-row" key={p.id}><div><div className="receipt-title">{p.recipient} · {p.amount} credits</div><div className="receipt-meta">{new Date(p.createdAt).toLocaleString()} · {p.reason || "No reason provided"} · {p.agent}</div></div><span className={p.status === "approved" ? "status approved" : p.status === "blocked" ? "status blocked" : p.review?.decision === "refused" ? "status blocked" : "status review"}>{p.review ? label(p.review.decision) : label(p.status)}</span></div>)}</div>}
+      </> : <div className="empty">Connecting to your desk and loading the control room…</div>}
+    </section>
   </>;
 }
