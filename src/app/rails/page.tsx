@@ -26,6 +26,10 @@ export default function RailsPage() {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [test, setTest] = useState<string | null>(null);
+  const [proposalRecipient, setProposalRecipient] = useState("Alex");
+  const [proposalAmount, setProposalAmount] = useState("8");
+  const [proposalReason, setProposalReason] = useState("Invoice payment");
+  const [submitting, setSubmitting] = useState(false);
   const [origin, setOrigin] = useState("https://rails-desk.vercel.app");
   const [loaded, setLoaded] = useState(false);
 
@@ -48,6 +52,16 @@ export default function RailsPage() {
       setSaved(true); setTimeout(() => setSaved(false), 2500);
     } catch (x) { setErr(x instanceof Error ? x.message : String(x)); }
   }
+  async function submitProposal(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true); setTest(null);
+    try {
+      const r = await d.testProposal({ recipient: proposalRecipient.trim(), amount: Number(proposalAmount), reason: proposalReason.trim() });
+      if (r) setTest(`${proposalRecipient} · ${proposalAmount} credits → ${label(r.status)}. ${r.reasons.join(" ")} Receipt ${r.receipt_id}.`);
+      await d.refresh();
+    } catch (x) { setTest(x instanceof Error ? x.message : String(x)); }
+    finally { setSubmitting(false); }
+  }
   async function sendTest(t: (typeof TESTS)[number]) {
     setTest("Sending…");
     try { const r = await d.testProposal(t); if (r) setTest(`${t.recipient} · ${t.amount} credits → ${label(r.status)}. ${r.reasons.join(" ")} Receipt ${r.receipt_id}.`); }
@@ -59,8 +73,21 @@ export default function RailsPage() {
   const mcp = `{\n  "mcpServers": {\n    "rails-desk": {\n      "command": "node",\n      "args": ["rails-desk-mcp.mjs"],\n      "env": {\n        "RAILS_DESK_URL": "${origin}",\n        "RAILS_DESK_AGENT_KEY": "${agentKey}"\n      }\n    }\n  }\n}`;
   const fetchMcp = `curl -o rails-desk-mcp.mjs ${origin}/rails-desk-mcp.mjs`;
 
-  return <><div className="page-head"><div><div className="eyebrow">POLICY CONFIGURATION / 02</div><h1 className="page-title">Set your rails</h1><p className="page-sub">Define the boundaries your agent cannot cross. The referee checks every proposal against these rules before recording a decision.</p></div><span className="tag">USER-DEFINED POLICY</span></div>
+  return <><div className="page-head"><div><div className="eyebrow">POLICY CONFIGURATION</div><h1 className="page-title">Set your rails</h1><p className="page-sub">Define the boundaries your agent cannot cross. The referee checks every proposal against these rules before recording a decision.</p></div><span className="tag">USER-DEFINED POLICY</span></div>
     {(err || d.error) && <div className="notice warn" style={{ marginBottom: 16 }}>{err || d.error}{d.error && <> <button type="button" className="button ghost button-small" onClick={() => { d.forget(); setLoaded(false); }}>Start a new desk</button></>}</div>}
+    <section className="panel" style={{ marginBottom: 15 }} id="new-proposal">
+      <div className="section-head"><div><h2 className="panel-title">Submit a payment proposal</h2><div className="panel-desc">This sends a real proposal to Rails Desk. Your rules decide whether it is approved, blocked, or sent to you for review. No funds are transferred.</div></div><span className="tag">LIVE PROPOSAL</span></div>
+      <form onSubmit={submitProposal}>
+        <div className="layout-grid">
+          <div className="field"><label htmlFor="proposal-recipient">Recipient</label><input id="proposal-recipient" value={proposalRecipient} onChange={(e) => setProposalRecipient(e.target.value)} placeholder="Who should receive it?" required /></div>
+          <div className="field"><label htmlFor="proposal-amount">Amount (credits)</label><input id="proposal-amount" type="number" min="0.01" step="0.01" value={proposalAmount} onChange={(e) => setProposalAmount(e.target.value)} required /></div>
+        </div>
+        <div className="field"><label htmlFor="proposal-reason">Payment context</label><input id="proposal-reason" value={proposalReason} onChange={(e) => setProposalReason(e.target.value)} placeholder="What is this payment for?" /></div>
+        <div className="action-row"><button className="button primary" type="submit" disabled={!d.desk || submitting || !proposalRecipient.trim() || !(Number(proposalAmount) > 0)}>{submitting ? "Checking proposal…" : "Submit proposal"}</button><Link className="button button-small" href="/receipts">Open review & receipts</Link></div>
+        {test && <div className="notice" role="status" style={{ marginTop: 12 }}>{test}</div>}
+      </form>
+    </section>
+
     <div className="layout-grid"><form className="panel" onSubmit={save}><div className="section-head"><div><h2 className="panel-title">Transfer policy</h2><div className="panel-desc">Changes apply to new proposals and are checked again at approval time.</div></div></div>
       <div className="field"><label htmlFor="cap">Maximum per action</label><input id="cap" type="number" min="0" step="0.01" value={cap} onChange={(e) => setCap(e.target.value)} required /><span className="hint">Any proposal above this amount is blocked.</span></div>
       <div className="field"><label htmlFor="review">Review limit</label><input id="review" type="number" min="0" step="0.01" value={review} onChange={(e) => setReview(e.target.value)} required /><span className="hint">Allowed proposals above this amount need your OK on the Receipts page. At or below it they are approved automatically.</span></div>
