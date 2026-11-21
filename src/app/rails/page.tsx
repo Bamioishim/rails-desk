@@ -8,6 +8,7 @@ const code: React.CSSProperties = { fontSize: 10, lineHeight: 1.6, whiteSpace: "
 const label = (s: string) => (s === "approved" ? "Approved" : s === "needs_review" ? "Needs your approval" : s === "blocked" ? "Blocked" : s === "refused" ? "Refused" : s);
 const decisionMessage = (recipient: string, status: string, reasons: string[] = []) => {
   if (status === "approved") return `${recipient} approved. Within your limits.`;
+  if (status === "refused") return `${recipient} refused. You declined this proposal.`;
   if (status === "needs_review") return `${recipient} needs your approval. Above your review limit.`;
   const reason = reasons.find((x) => !x.startsWith("Not reached")) || "This proposal did not meet your rules.";
   return `${recipient} blocked. ${reason}`;
@@ -28,6 +29,7 @@ export default function RailsPage() {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [test, setTest] = useState<string | null>(null);
+  const [testTone, setTestTone] = useState<"approved" | "review" | "warn">("approved");
   const [proposalRecipient, setProposalRecipient] = useState("Alex");
   const [proposalAmount, setProposalAmount] = useState("8");
   const [proposalReason, setProposalReason] = useState("Invoice payment");
@@ -59,7 +61,7 @@ export default function RailsPage() {
     setSubmitting(true); setTest(null);
     try {
       const r = await d.submitProposal({ recipient: proposalRecipient.trim(), amount: Number(proposalAmount), reason: proposalReason.trim() });
-      if (r) setTest(decisionMessage(proposalRecipient, r.status, r.reasons));
+      if (r) { setTest(decisionMessage(proposalRecipient, r.status, r.reasons)); setTestTone(r.status === "approved" ? "approved" : r.status === "needs_review" ? "review" : "warn"); }
       await d.refresh();
     } catch (x) { setTest(x instanceof Error ? x.message : String(x)); }
     finally { setSubmitting(false); }
@@ -82,7 +84,7 @@ export default function RailsPage() {
         </div>
         <div className="field"><label htmlFor="proposal-reason">Payment context</label><input id="proposal-reason" value={proposalReason} onChange={(e) => setProposalReason(e.target.value)} placeholder="What is this payment for?" /></div>
         <div className="action-row"><button className="button primary" type="submit" disabled={!d.desk || submitting || !proposalRecipient.trim() || !(Number(proposalAmount) > 0)}>{submitting ? "Checking proposal…" : "Submit proposal"}</button><Link className="button button-small" href="/receipts">Open review & receipts</Link></div>
-        {test && <div className={`notice ${test.startsWith(proposalRecipient + " blocked") ? "warn" : ""}`} role="status" style={{ marginTop: 12 }}>{test}</div>}
+        {test && <div className={`notice ${testTone === "warn" ? "warn" : testTone === "review" ? "review" : ""}`} role="status" style={{ marginTop: 12 }}>{test}</div>}
       </form>
     </section>
 
