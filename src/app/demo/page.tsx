@@ -105,7 +105,7 @@ export default function GuidedDemoPage(){
    if(blocked){
     const why=allowOk?`Amount exceeds the demo cap of ${CAP} credits.`:"Recipient is not on the demo allowlist.";
     setStage("blocked");setCaption(`Step ${i+1} of 3 · Blocked. Nothing is sent`);
-    setNote(allowOk?`Blocked: this proposal exceeds the ${CAP}-credit spending cap.`:"Blocked: this recipient is not on the allowed list. The agent's urgency is just text, not an instruction.");
+    setNote(allowOk?`Blocked: this proposal exceeds the ${CAP}-credit spending cap.`:"Blocked: this recipient isn't on the allowed list.");
     say("referee","decision: BLOCKED. The agent cannot override this.");
     addReceipt({recipient:step.recipient,amount:value,decision:"Blocked",reason:why});
     say("demo",`receipt recorded: ${step.recipient} · ${value} credits · Blocked`);
