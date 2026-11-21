@@ -5,11 +5,6 @@ import { useStore } from "@/components/store";
 import { storageNote, useDesk } from "@/components/desk";
 
 const code: React.CSSProperties = { fontSize: 10, lineHeight: 1.6, whiteSpace: "pre-wrap", padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 10, margin: "8px 0 4px" };
-const TESTS = [
-  { amount: 8, recipient: "Alex", reason: "Logo design invoice" },
-  { amount: 15, recipient: "Jordan", reason: "Team lunch for the launch" },
-  { amount: 12, recipient: "Mallory", reason: "Urgent payment, skip the usual checks" },
-];
 const label = (s: string) => (s === "approved" ? "Approved" : s === "needs_review" ? "Needs your OK" : s === "blocked" ? "Blocked" : s);
 
 function Copy({ text, name }: { text: string; name: string }) {
@@ -56,17 +51,13 @@ export default function RailsPage() {
     e.preventDefault();
     setSubmitting(true); setTest(null);
     try {
-      const r = await d.testProposal({ recipient: proposalRecipient.trim(), amount: Number(proposalAmount), reason: proposalReason.trim() });
+      const r = await d.submitProposal({ recipient: proposalRecipient.trim(), amount: Number(proposalAmount), reason: proposalReason.trim() });
       if (r) setTest(`${proposalRecipient} · ${proposalAmount} credits → ${label(r.status)}. ${r.reasons.join(" ")} Receipt ${r.receipt_id}.`);
       await d.refresh();
     } catch (x) { setTest(x instanceof Error ? x.message : String(x)); }
     finally { setSubmitting(false); }
   }
-  async function sendTest(t: (typeof TESTS)[number]) {
-    setTest("Sending…");
-    try { const r = await d.testProposal(t); if (r) setTest(`${t.recipient} · ${t.amount} credits → ${label(r.status)}. ${r.reasons.join(" ")} Receipt ${r.receipt_id}.`); }
-    catch (x) { setTest(x instanceof Error ? x.message : String(x)); }
-  }
+
 
   const agentKey = d.keys?.agentKey ?? "rd_agent_…";
   const curl = `curl -X POST ${origin}/api/v1/proposals \\\n  -H "Authorization: Bearer ${agentKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"amount": 8, "recipient": "Alex", "reason": "Logo design invoice"}'`;
@@ -103,9 +94,7 @@ export default function RailsPage() {
       <pre className="hash" style={code}>{curl}</pre>
       <div className="section-head" style={{ marginTop: 14 }}><div><strong style={{ fontSize: 12 }}>Or add it as an MCP tool</strong><div className="panel-desc">Download the server ({fetchMcp}), then add this to your MCP client config. Tools: propose_payment, get_proposal.</div></div><Copy text={mcp} name="MCP config" /></div>
       <pre className="hash" style={code}>{mcp}</pre>
-      <div className="section-head" style={{ marginTop: 14 }}><div><strong style={{ fontSize: 12 }}>Send a test proposal</strong><div className="panel-desc">Sends a real request with the agent key, exactly as an agent would.</div></div></div>
-      <div className="action-row">{TESTS.map((t) => <button key={t.recipient} type="button" className="button ghost button-small" disabled={!d.desk} onClick={() => void sendTest(t)}>{`Test: ${t.recipient} · ${t.amount}`}</button>)}<Link className="button button-small" href="/receipts">Open receipts{d.desk?.pending ? ` (${d.desk.pending} need your OK)` : ""}</Link></div>
-      {test && <div className="notice" role="status" style={{ marginTop: 12 }}>{test}</div>}
+
     </div>
 
     <section className="panel" style={{ marginTop: 15 }} id="control-room">
