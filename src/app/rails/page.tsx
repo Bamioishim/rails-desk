@@ -2,10 +2,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/components/store";
-import { storageNote, useDesk } from "@/components/desk";
+import { useDesk } from "@/components/desk";
 
 const code: React.CSSProperties = { fontSize: 10, lineHeight: 1.6, whiteSpace: "pre-wrap", padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 10, margin: "8px 0 4px" };
-const label = (s: string) => (s === "approved" ? "Approved" : s === "needs_review" ? "Needs your OK" : s === "blocked" ? "Blocked" : s);
+const label = (s: string) => (s === "approved" ? "Approved" : s === "needs_review" ? "Needs your approval" : s === "blocked" ? "Blocked" : s === "refused" ? "Refused" : s);
+const decisionMessage = (recipient: string, status: string, reasons: string[] = []) => {
+  if (status === "approved") return `${recipient} approved. Within your limits.`;
+  if (status === "needs_review") return `${recipient} needs your approval. Above your review limit.`;
+  const reason = reasons.find((x) => !x.startsWith("Not reached")) || "This proposal did not meet your rules.";
+  return `${recipient} blocked. ${reason}`;
+};
+const decisionClass = (status: string) => status === "approved" ? "tag green" : status === "needs_review" ? "tag neutral" : "tag red";
 
 function Copy({ text, name }: { text: string; name: string }) {
   const [done, setDone] = useState(false);
@@ -52,7 +59,7 @@ export default function RailsPage() {
     setSubmitting(true); setTest(null);
     try {
       const r = await d.submitProposal({ recipient: proposalRecipient.trim(), amount: Number(proposalAmount), reason: proposalReason.trim() });
-      if (r) setTest(`${proposalRecipient} · ${proposalAmount} credits → ${label(r.status)}. ${r.reasons.join(" ")} Receipt ${r.receipt_id}.`);
+      if (r) setTest(decisionMessage(proposalRecipient, r.status, r.reasons));
       await d.refresh();
     } catch (x) { setTest(x instanceof Error ? x.message : String(x)); }
     finally { setSubmitting(false); }
@@ -75,7 +82,7 @@ export default function RailsPage() {
         </div>
         <div className="field"><label htmlFor="proposal-reason">Payment context</label><input id="proposal-reason" value={proposalReason} onChange={(e) => setProposalReason(e.target.value)} placeholder="What is this payment for?" /></div>
         <div className="action-row"><button className="button primary" type="submit" disabled={!d.desk || submitting || !proposalRecipient.trim() || !(Number(proposalAmount) > 0)}>{submitting ? "Checking proposal…" : "Submit proposal"}</button><Link className="button button-small" href="/receipts">Open review & receipts</Link></div>
-        {test && <div className="notice" role="status" style={{ marginTop: 12 }}>{test}</div>}
+        {test && <div className={`notice ${test.startsWith(proposalRecipient + " blocked") ? "warn" : ""}`} role="status" style={{ marginTop: 12 }}>{test}</div>}
       </form>
     </section>
 
@@ -83,7 +90,7 @@ export default function RailsPage() {
       <div className="field"><label htmlFor="cap">Maximum per action</label><input id="cap" type="number" min="0" step="0.01" value={cap} onChange={(e) => setCap(e.target.value)} required /><span className="hint">Any proposal above this amount is blocked.</span></div>
       <div className="field"><label htmlFor="review">Review limit</label><input id="review" type="number" min="0" step="0.01" value={review} onChange={(e) => setReview(e.target.value)} required /><span className="hint">Allowed proposals above this amount need your OK on the Receipts page. At or below it they are approved automatically.</span></div>
       <div className="field"><label htmlFor="recipients">Allowed recipients</label><textarea id="recipients" value={names} onChange={(e) => setNames(e.target.value)} placeholder={"Alex\nJordan\nSam"} style={{ minHeight: 120 }} /><span className="hint">One recipient per line or comma-separated. Matching ignores letter case and surrounding spaces.</span></div>
-      <div className="notice" style={{ marginBottom: 17 }}>{d.desk ? storageNote[d.desk.storage] : "Connecting to your desk…"} Your owner key stays in this browser.</div>
+      
       <button className="button primary" type="submit" disabled={!d.desk}>Save policy changes</button>{saved && <span style={{ marginLeft: 12, color: "var(--green)", fontSize: 12 }}>✓ Rails saved</span>}</form>
       <aside className="panel"><h2 className="panel-title">How the referee applies policy</h2><div className="step"><div className="step-num">1</div><div><strong>Validate the amount</strong><p>Block zero, negative, invalid or over-maximum amounts.</p></div></div><div className="step"><div className="step-num">2</div><div><strong>Check the recipient</strong><p>Require an exact case-insensitive match in your allowlist.</p></div></div><div className="step"><div className="step-num">3</div><div><strong>Apply the review limit</strong><p>Above it, the proposal waits for your Approve or Refuse.</p></div></div><div className="step"><div className="step-num">4</div><div><strong>Record the decision</strong><p>Append the proposal and outcome to the receipt hash chain.</p></div></div></aside></div>
 
@@ -102,9 +109,9 @@ export default function RailsPage() {
       {d.desk ? <>
         <div className="action-row" style={{ marginBottom: 14 }}><span className="tag">MAX {d.desk.rules.maxPerAction} CREDITS</span><span className="tag">REVIEW ABOVE {d.desk.rules.reviewLimit}</span><span className="tag">{d.desk.rules.allowedRecipients.length} ALLOWED RECIPIENTS</span><span className="tag">{d.desk.pending} PENDING REVIEW</span><Link className="button button-small" href="/receipts">View all receipts →</Link></div>
         <div className="section-head"><div><strong style={{ fontSize: 12 }}>Recent activity</strong><div className="panel-desc">The newest 12 events from your persistent receipt chain.</div></div><button type="button" className="button ghost button-small" onClick={() => void d.refresh()}>Refresh now</button></div>
-        {d.desk.receipts.length === 0 ? <div className="empty">No activity yet. Connect an agent or run a demo walkthrough to see events here.</div> : <div className="receipt-list">{d.desk.receipts.slice().reverse().slice(0, 12).map((r) => <div className="receipt-row" key={r.id}><div><div className="receipt-title">{r.source === "demo" ? "Demo · " : "App · "}{r.event.replaceAll("_", " ")}</div><div className="receipt-meta">{new Date(r.at).toLocaleString()} · {r.recipient} · {r.amount} credits · {r.detail}</div><div className="receipt-meta mono">{r.hash.slice(0, 20)}…</div></div><span className={r.outcome === "approved" ? "status approved" : r.outcome === "blocked" || r.outcome === "refused" ? "status blocked" : "status review"}>{label(r.outcome)}</span></div>)}</div>}
+        {d.desk.receipts.length === 0 ? <div className="empty">No activity yet. Connect an agent or run a demo walkthrough to see events here.</div> : <div className="receipt-list">{d.desk.receipts.slice().reverse().slice(0, 12).map((r) => <div className="receipt-row" key={r.id}><div><div className="receipt-title">{r.source === "demo" ? "Demo · " : "App · "}{r.event.replaceAll("_", " ")}</div><div className="receipt-meta">{new Date(r.at).toLocaleString()} · {r.recipient} · {r.amount} credits · {decisionMessage(r.recipient, r.outcome, [r.detail])}</div></div><span className={decisionClass(r.outcome)}>{label(r.outcome)}</span></div>)}</div>}
         <div className="section-head" style={{ marginTop: 18 }}><div><strong style={{ fontSize: 12 }}>Recent proposals</strong><div className="panel-desc">What your connected agent has submitted.</div></div></div>
-        {d.desk.proposals.length === 0 ? <div className="empty">No proposals submitted yet. Submit one using the proposal form above or connect an external agent.</div> : <div className="receipt-list">{d.desk.proposals.slice().reverse().slice(0, 8).map((p) => <div className="receipt-row" key={p.id}><div><div className="receipt-title">{p.recipient} · {p.amount} credits</div><div className="receipt-meta">{new Date(p.createdAt).toLocaleString()} · {p.reason || "No reason provided"} · {p.agent}</div></div><span className={p.status === "approved" ? "status approved" : p.status === "blocked" ? "status blocked" : p.review?.decision === "refused" ? "status blocked" : "status review"}>{p.review ? label(p.review.decision) : label(p.status)}</span></div>)}</div>}
+        {d.desk.proposals.length === 0 ? <div className="empty">No proposals submitted yet. Submit one using the proposal form above or connect an external agent.</div> : <div className="receipt-list">{d.desk.proposals.slice().reverse().slice(0, 8).map((p) => <div className="receipt-row" key={p.id}><div><div className="receipt-title">{p.recipient} · {p.amount} credits</div><div className="receipt-meta">{new Date(p.createdAt).toLocaleString()} · {decisionMessage(p.recipient, p.review ? p.review.decision : p.status, p.reasons)}</div></div><span className={decisionClass(p.review ? p.review.decision : p.status)}>{label(p.review ? p.review.decision : p.status)}</span></div>)}</div>}
       </> : <div className="empty">Connecting to your desk and loading the control room…</div>}
     </section>
   </>;
