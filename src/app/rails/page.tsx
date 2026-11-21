@@ -10,8 +10,9 @@ const decisionMessage = (recipient: string, status: string, reasons: string[] = 
   if (status === "approved") return `${recipient} approved. Within your limits.`;
   if (status === "refused") return `${recipient} refused. You declined this proposal.`;
   if (status === "needs_review") return `${recipient} needs your approval. Above your review limit.`;
-  const reason = reasons.find((x) => !x.startsWith("Not reached")) || "This proposal did not meet your rules.";
-  return `${recipient} blocked. ${reason}`;
+  const reason = reasons.find((x) => !x.startsWith("Not reached")) || "";
+  const plainReason = /over the .*maximum|over .*maximum/i.test(reason) ? "Above your per-payment limit." : /not on the allowed list/i.test(reason) ? "Recipient isn't on your allowed list." : "The amount is invalid.";
+  return `${recipient} blocked. ${plainReason}`;
 };
 const decisionClass = (status: string) => status === "approved" ? "tag green" : status === "needs_review" ? "tag neutral" : "tag red";
 
