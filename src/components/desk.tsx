@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export type DeskRules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number };
 export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked"; reasons: string[]; review: null | { decision: "approved" | "refused"; at: string }; receiptIds: string[] };
-export type DeskReceipt = { index: number; id: string; at: string; proposalId: string; event: string; outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string; previousHash: string; hash: string };
+export type DeskReceipt = { index: number; id: string; at: string; proposalId: string; event: string; source?: "app" | "demo"; outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string; previousHash: string; hash: string };
 export type DeskState = { id: string; name: string; rules: DeskRules; proposals: DeskProposal[]; receipts: DeskReceipt[]; storage: "redis" | "file" | "ephemeral"; pending: number; agentKeyHint: string; verification: { valid: boolean; brokenAt: number | null } };
 type Keys = { deskId: string; ownerKey: string; agentKey: string };
 
@@ -42,10 +42,10 @@ export function useDesk(pollMs = 0) {
   const saveRules = async (rules: DeskRules) => { if (!keys) return; await api("/api/v1/desk", { method: "PUT", key: keys.ownerKey, body: JSON.stringify({ rules }) }); await refresh(); };
   const decide = async (id: string, decision: "approve" | "refuse") => { if (!keys) return; await api(`/api/v1/proposals/${id}/decision`, { method: "POST", key: keys.ownerKey, body: JSON.stringify({ decision }) }); await refresh(); };
   const rotate = async () => { if (!keys) return; const r = await api<{ agentKey: string }>("/api/v1/desk/agent-key", { method: "POST", key: keys.ownerKey }); const k = { ...keys, agentKey: r.agentKey }; localStorage.setItem(STORAGE_KEY, JSON.stringify(k)); setKeys(k); await refresh(k); };
-  const testProposal = async (body: { amount: number; recipient: string; reason: string }) => { if (!keys) return null; const r = await api<{ status: string; reasons: string[]; receipt_id: string }>("/api/v1/proposals", { method: "POST", key: keys.agentKey, body: JSON.stringify({ ...body, agent: "test button" }) }); await refresh(); return r; };
+  const recordDemoEvent = async (body: { amount: number; recipient: string; outcome: "approved" | "needs_review" | "blocked" | "refused"; detail: string; demoId?: string }) => { if (!keys) throw new Error("Create a desk before recording demo activity."); const receipt = await api<DeskReceipt>("/api/v1/demo/events", { method: "POST", key: keys.ownerKey, body: JSON.stringify(body) }); await refresh(); return receipt; };\n  const testProposal = async (body: { amount: number; recipient: string; reason: string }) => { if (!keys) return null; const r = await api<{ status: string; reasons: string[]; receipt_id: string }>("/api/v1/proposals", { method: "POST", key: keys.agentKey, body: JSON.stringify({ ...body, agent: "test button" }) }); await refresh(); return r; };
   const forget = () => { localStorage.removeItem(STORAGE_KEY); setKeys(null); setDesk(null); };
 
-  return { ready, keys, desk, error, refresh, create, saveRules, decide, rotate, testProposal, forget };
+  return { ready, keys, desk, error, refresh, create, saveRules, decide, rotate, testProposal, recordDemoEvent, forget };
 }
 
 export const storageNote: Record<DeskState["storage"], string> = {
