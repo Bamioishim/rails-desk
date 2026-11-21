@@ -167,3 +167,10 @@
 .app-home h2.panel-title{font-size:21px;font-weight:600;letter-spacing:-.03em;line-height:1.2}
 .app-home h1.page-title{font-weight:600}
 .app-home .tag.green{background:#eef6f1;color:#2f6b4a;border-color:#d7ebdf}
+
+
+/* Clear decision feedback: red blocked, amber awaiting owner approval, green approved. */
+.app-home .notice.review{background:#fff6df;color:#8a5a12;border-color:#f1dfb5}
+.demo-home .demo-notice.is-blocked{background:#fbeeec;color:#a83227;border-color:#f3d6d2}
+.demo-home .demo-notice.is-review{background:#fff6df;color:#8a5a12;border-color:#f1dfb5}
+.demo-home .demo-notice.is-approved{background:#eef6f1;color:#2f6b4a;border-color:#d7ebdf}
