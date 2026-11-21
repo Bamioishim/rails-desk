@@ -15,7 +15,7 @@ const wait = (ms:number) => new Promise<void>(resolve => window.setTimeout(resol
 const REVIEW_LIMIT = 10;
 const CAP = 20;
 const ALLOWED = ["Alex","Jordan","Sam"];
-const IDLE_NOTE = "The demo uses its own temporary state. It will not change your rails or add entries to your receipt history.";
+const IDLE_NOTE = "The demo uses fixed walkthrough rules. Simulated outcomes are saved to the shared receipt chain; no funds move.";
 const IDLE_MARKS: Record<RuleKey,Mark> = {cap:"idle",allow:"idle",review:"idle"};
 const isAllowed = (name:string) => ALLOWED.some(n=>n.toLowerCase()===name.trim().toLowerCase());
 const clock = () => new Date().toLocaleTimeString("en-GB",{hour12:false});
@@ -177,7 +177,7 @@ export default function GuidedDemoPage(){
    <div className="demo-toolbar">
     <div><span className="demo-pill">Isolated demo</span><span className="demo-toolbar-copy">{caption ?? "No shared policy or receipt data is changed."}</span></div>
     <div className="demo-actions">
-     <button className="ref-btn ref-primary" onClick={()=>void play()} disabled={auto}>{auto?"Playing":played?"Play again":"Play walkthrough"}</button>
+     <button className="ref-btn ref-primary" onClick={()=>void play()} disabled={auto||!d.keys}>{!d.keys?"Connecting…":auto?"Playing":played?"Play again":"Play walkthrough"}</button>
      <button className="ref-btn ref-secondary" onClick={takeControl} disabled={!auto}>Take control</button>
      <button className="ref-btn ref-secondary" onClick={reset}>Restart</button>
     </div>
@@ -198,9 +198,9 @@ export default function GuidedDemoPage(){
      <div className="demo-field"><label htmlFor="demo-amount">Amount · demo credits</label><input id="demo-amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} disabled={auto}/><span>Maximum per action: 20 credits. Above 10 needs your OK.</span></div>
      <div className="demo-field"><label htmlFor="demo-reason">What the agent wants to do</label><textarea id="demo-reason" value={reason} onChange={e=>setReason(e.target.value)} disabled={auto}/></div>
      <div className="demo-actions demo-submit">
-      <button className="ref-btn ref-primary" onClick={submit} disabled={auto||stage==="approved"||stage==="complete"}>Check against rails</button>
-      {stage==="review"&&<><button className="ref-btn ref-primary" onClick={approve} disabled={auto}>Approve</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={auto}>Refuse</button></>}
-      {stage==="approved"&&<><button className="ref-btn ref-primary" onClick={execute} disabled={auto}>Execute mock transfer</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={auto}>Cancel instead</button></>}
+      <button className="ref-btn ref-primary" onClick={submit} disabled={!d.keys||auto||stage==="approved"||stage==="complete"}>Check against rails</button>
+      {stage==="review"&&<><button className="ref-btn ref-primary" onClick={approve} disabled={!d.keys||auto}>Approve</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={!d.keys||auto}>Refuse</button></>}
+      {stage==="approved"&&<><button className="ref-btn ref-primary" onClick={execute} disabled={!d.keys||auto}>Execute mock transfer</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={!d.keys||auto}>Cancel instead</button></>}
      </div>
      {log.length>0&&<div className="demo-log-wrap"><div className="demo-log-head"><strong>Live log</strong><span>{auto?"● live":"stopped"}</span></div><ol className="demo-log" ref={logRef} aria-label="Live log" aria-live="polite">{log.map((l,i)=><li key={i}><time>{l.t}</time><b className={`who-${l.who}`}>{l.who}</b><span>{l.text}</span></li>)}</ol></div>}
     </section>
