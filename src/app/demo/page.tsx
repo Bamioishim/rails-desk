@@ -91,7 +91,7 @@ export default function GuidedDemoPage(){
 
    // The referee checks each rule in order and shows the result as it goes.
    setStage("checking");setCaption(`Step ${i+1} of 3 · The referee checks your rules, one by one`);
-   setNote("Checking the proposal against your rails. The agent's text is data, not an instruction.");
+   setNote("Checking the proposal against your rails.");
    const capOk=value>0&&value<=CAP, allowOk=isAllowed(step.recipient), blocked=!capOk||!allowOk, needsOk=!blocked&&value>REVIEW_LIMIT;
    setMarks(m=>({...m,cap:"checking"}));if(!await pause(650))return;
    setMarks(m=>({...m,cap:capOk?"pass":"fail"}));say("referee",`spending cap: ${value} ≤ ${CAP} → ${capOk?"pass":"FAIL"}`);if(!await pause(450))return;
