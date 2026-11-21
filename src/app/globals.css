@@ -167,3 +167,13 @@
 .app-home h2.panel-title{font-size:21px;font-weight:600;letter-spacing:-.03em;line-height:1.2}
 .app-home h1.page-title{font-weight:600}
 .app-home .tag.green{background:#eef6f1;color:#2f6b4a;border-color:#d7ebdf}
+
+
+/* Clear decision feedback: red blocked, amber awaiting owner approval, green approved. */
+.app-home .notice.review{background:#fff6df;color:#8a5a12;border-color:#f1dfb5}
+.demo-home .demo-notice.is-blocked{background:#fbeeec;color:#a83227;border-color:#f3d6d2}
+.demo-home .demo-notice.is-review{background:#fff6df;color:#8a5a12;border-color:#f1dfb5}
+.demo-home .demo-notice.is-approved{background:#eef6f1;color:#2f6b4a;border-color:#d7ebdf}
+
+/* Owner approval dialog */
+.app-home .receipt-actions{align-items:center;margin-top:0;justify-content:flex-end}.review-modal-backdrop{position:fixed;inset:0;z-index:80;background:rgba(12,14,18,.48);display:grid;place-items:center;padding:20px}.review-modal{position:relative;width:min(100%,440px);background:#fff;border:1px solid #e4e6ea;border-radius:22px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.2)}.review-modal-close{position:absolute;top:12px;right:14px;width:32px;height:32px;border:0;border-radius:50%;background:#f2f3f5;color:#111;font-size:22px;line-height:1;cursor:pointer}.review-modal-summary{display:grid;grid-template-columns:100px 1fr;gap:12px;padding:16px;margin-top:18px;background:#f7f7f8;border-radius:14px;font-size:12px}.review-modal-summary span{color:#5c6068}.review-modal-summary strong{font-weight:600;overflow-wrap:anywhere}.review-modal .action-row{margin-top:22px}

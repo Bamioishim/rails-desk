@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {useEffect, useRef, useState} from "react";
+import {useDesk} from "@/components/desk";
 
 type Stage = "idle" | "typing" | "checking" | "review" | "approved" | "blocked" | "refused" | "complete";
 type Mark = "idle" | "checking" | "pass" | "flag" | "fail" | "skip";
@@ -14,12 +15,12 @@ const wait = (ms:number) => new Promise<void>(resolve => window.setTimeout(resol
 const REVIEW_LIMIT = 10;
 const CAP = 20;
 const ALLOWED = ["Alex","Jordan","Sam"];
-const IDLE_NOTE = "The demo uses its own temporary state. It will not change your rails or add entries to your receipt history.";
+const IDLE_NOTE = "The demo uses fixed walkthrough rules. Simulated outcomes are saved to the shared receipt chain; no funds move.";
 const IDLE_MARKS: Record<RuleKey,Mark> = {cap:"idle",allow:"idle",review:"idle"};
 const isAllowed = (name:string) => ALLOWED.some(n=>n.toLowerCase()===name.trim().toLowerCase());
 const clock = () => new Date().toLocaleTimeString("en-GB",{hour12:false});
 // Short display hash for demo receipts (not a security hash; the real app uses SHA-256).
-const demoHash = (s:string) => { let h1=0x811c9dc5, h2=0x01000193; for (const c of s) { h1=Math.imul(h1^c.charCodeAt(0),16777619); h2=Math.imul(h2+c.charCodeAt(0),2246822507); } return ((h1>>>0).toString(16).padStart(8,"0")+(h2>>>0).toString(16).padStart(8,"0")); };
+
 const markLabel: Record<Mark,string> = {idle:"",checking:"Checking…",pass:"Pass",flag:"Needs your OK",fail:"Fail",skip:"Not reached"};
 const markIcon: Record<Mark,string|null> = {idle:null,checking:"…",pass:"✓",flag:"!",fail:"✕",skip:"–"};
 
@@ -33,6 +34,7 @@ const STEP_LABELS = ["Alex · 8 credits, within every rule","Jordan · 15 credit
 const freshSteps = ():StepState[] => STEP_LABELS.map(label=>({label,status:"pending"}));
 
 export default function GuidedDemoPage(){
+ const d=useDesk(4000);
  const [recipient,setRecipient]=useState("Alex");
  const [amount,setAmount]=useState("12");
  const [reason,setReason]=useState("Monthly team expense reimbursement");
@@ -49,10 +51,17 @@ export default function GuidedDemoPage(){
  const logRef=useRef<HTMLOListElement>(null);
 
  useEffect(()=>()=>{runId.current+=1;},[]);
+ useEffect(()=>{if(d.ready&&!d.keys)void d.create().catch(e=>setNote(e instanceof Error?e.message:String(e)));},[d.ready,d.keys]);
  useEffect(()=>{const el=logRef.current;if(el)el.scrollTop=el.scrollHeight;},[log]);
 
  const say=(who:LogLine["who"],text:string)=>setLog(l=>[...l.slice(-60),{t:clock(),who,text}]);
- const addReceipt=(r:Omit<DemoReceipt,"id"|"hash">)=>setReceipts(list=>{const id=`DR-${String(list.length+1).padStart(3,"0")}`;const prev=list.at(-1)?.hash??"0".repeat(16);return [...list,{...r,id,hash:demoHash(prev+id+r.recipient+r.amount+r.decision)}];});
+ const addReceipt=(r:Omit<DemoReceipt,"id"|"hash">)=>{
+  const outcome=r.decision==="Blocked"?"blocked":r.decision==="Refused"?"refused":"approved";
+  void d.recordDemoEvent({recipient:r.recipient,amount:r.amount,outcome,detail:r.reason,demoId:"guided-walkthrough"}).then(saved=>{
+   setReceipts(list=>[...list,{...r,id:saved.id,hash:saved.hash}]);
+   say("demo",`persistent demo receipt recorded: ${r.recipient} · ${r.amount} credits · ${r.decision}`);
+  }).catch(error=>say("demo",`receipt could not be saved: ${error instanceof Error?error.message:String(error)}`));
+ };
  const setStep=(i:number,patch:Partial<StepState>)=>setSteps(s=>s.map((x,j)=>j===i?{...x,...patch}:x));
  const counts={total:receipts.length,approved:receipts.filter(r=>r.decision==="Executed (mock)").length,review:receipts.filter(r=>/needed your OK/i.test(r.reason)).length,blocked:receipts.filter(r=>r.decision==="Blocked").length};
 
@@ -82,7 +91,7 @@ export default function GuidedDemoPage(){
 
    // The referee checks each rule in order and shows the result as it goes.
    setStage("checking");setCaption(`Step ${i+1} of 3 · The referee checks your rules, one by one`);
-   setNote("Checking the proposal against your rails. The agent's text is data, not an instruction.");
+   setNote("Checking the proposal against your rails.");
    const capOk=value>0&&value<=CAP, allowOk=isAllowed(step.recipient), blocked=!capOk||!allowOk, needsOk=!blocked&&value>REVIEW_LIMIT;
    setMarks(m=>({...m,cap:"checking"}));if(!await pause(650))return;
    setMarks(m=>({...m,cap:capOk?"pass":"fail"}));say("referee",`spending cap: ${value} ≤ ${CAP} → ${capOk?"pass":"FAIL"}`);if(!await pause(450))return;
@@ -96,7 +105,7 @@ export default function GuidedDemoPage(){
    if(blocked){
     const why=allowOk?`Amount exceeds the demo cap of ${CAP} credits.`:"Recipient is not on the demo allowlist.";
     setStage("blocked");setCaption(`Step ${i+1} of 3 · Blocked. Nothing is sent`);
-    setNote(allowOk?`Blocked: this proposal exceeds the ${CAP}-credit spending cap.`:"Blocked: this recipient is not on the allowed list. The agent's urgency is just text, not an instruction.");
+    setNote(allowOk?`Blocked: this proposal exceeds the ${CAP}-credit spending cap.`:"Blocked: this recipient isn't on the allowed list.");
     say("referee","decision: BLOCKED. The agent cannot override this.");
     addReceipt({recipient:step.recipient,amount:value,decision:"Blocked",reason:why});
     say("demo",`receipt recorded: ${step.recipient} · ${value} credits · Blocked`);
@@ -119,7 +128,7 @@ export default function GuidedDemoPage(){
    say("executor",`mock transfer: ${value} credits → ${step.recipient}. No funds move in the demo.`);
    addReceipt({recipient:step.recipient,amount:value,decision:"Executed (mock)",reason:needsOk?"Needed your OK (above the review limit), approved, then executed (mock).":"Approved by the rails, then executed (mock)."});
    say("demo",`receipt recorded: ${step.recipient} · ${value} credits · Executed (mock)`);
-   setStage("complete");setNote("Recorded in this demo page only. No funds moved.");
+   setStage("complete");setNote("Demo outcome saved to your receipt chain. No funds moved.");
    setStep(i,{status:"done",outcome:needsOk?"Needed your OK, executed":"Approved, executed"});
    if(!await pause(2800))return;
   }
@@ -140,7 +149,7 @@ export default function GuidedDemoPage(){
   setStage("review");setNote(`Needs your OK: above the ${REVIEW_LIMIT}-credit review limit. The proposal is waiting for your explicit approval. No transfer has occurred.`);say("referee","decision: NEEDS YOUR OK");
  };
  const approve=()=>{setStage("approved");say("you","Approve");setNote("Approved in the walkthrough. This still does not execute anything.");};
- const execute=()=>{addReceipt({recipient,amount:Number(amount),decision:"Executed (mock)",reason:"Manually completed in the isolated demo."});say("executor",`mock transfer: ${amount} credits → ${recipient}`);setStage("complete");setNote("Recorded in this demo page only. No funds moved and no persistent receipt was written.");};
+ const execute=()=>{addReceipt({recipient,amount:Number(amount),decision:"Executed (mock)",reason:"Manually completed in the isolated demo."});say("executor",`mock transfer: ${amount} credits → ${recipient}`);setStage("complete");setNote("Demo outcome saved to your receipt chain. No funds moved.");};
  const refuse=()=>{setStage("refused");say("you","Refuse");addReceipt({recipient,amount:Number(amount),decision:"Refused",reason:"Manually refused in the isolated demo."});setNote("Refusal shown in the walkthrough only. Nothing was sent.");};
 
  const ruleText: Record<RuleKey,string> = {
@@ -157,7 +166,7 @@ export default function GuidedDemoPage(){
     <nav className="ref-links">
      <Link href="/#about">About</Link><Link href="/#features">Features</Link><Link href="/#how">How it works</Link><Link href="/#questions">Questions</Link>
     </nav>
-    <Link className="ref-btn ref-primary ref-nav-btn" href="/demo">Play the demo</Link>
+    <div className="ref-links"><Link href="/receipts">Receipts</Link><Link className="ref-btn ref-primary ref-nav-btn" href="/demo">Play the demo</Link></div>
    </div>
   </header>
   <main className="demo-wrap">
@@ -168,7 +177,7 @@ export default function GuidedDemoPage(){
    <div className="demo-toolbar">
     <div><span className="demo-pill">Isolated demo</span><span className="demo-toolbar-copy">{caption ?? "No shared policy or receipt data is changed."}</span></div>
     <div className="demo-actions">
-     <button className="ref-btn ref-primary" onClick={()=>void play()} disabled={auto}>{auto?"Playing":played?"Play again":"Play walkthrough"}</button>
+     <button className="ref-btn ref-primary" onClick={()=>void play()} disabled={auto||!d.keys}>{!d.keys?"Connecting…":auto?"Playing":played?"Play again":"Play walkthrough"}</button>
      <button className="ref-btn ref-secondary" onClick={takeControl} disabled={!auto}>Take control</button>
      <button className="ref-btn ref-secondary" onClick={reset}>Restart</button>
     </div>
@@ -189,20 +198,20 @@ export default function GuidedDemoPage(){
      <div className="demo-field"><label htmlFor="demo-amount">Amount · demo credits</label><input id="demo-amount" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} disabled={auto}/><span>Maximum per action: 20 credits. Above 10 needs your OK.</span></div>
      <div className="demo-field"><label htmlFor="demo-reason">What the agent wants to do</label><textarea id="demo-reason" value={reason} onChange={e=>setReason(e.target.value)} disabled={auto}/></div>
      <div className="demo-actions demo-submit">
-      <button className="ref-btn ref-primary" onClick={submit} disabled={auto||stage==="approved"||stage==="complete"}>Check against rails</button>
-      {stage==="review"&&<><button className="ref-btn ref-primary" onClick={approve} disabled={auto}>Approve</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={auto}>Refuse</button></>}
-      {stage==="approved"&&<><button className="ref-btn ref-primary" onClick={execute} disabled={auto}>Execute mock transfer</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={auto}>Cancel instead</button></>}
+      <button className="ref-btn ref-primary" onClick={submit} disabled={!d.keys||auto||stage==="approved"||stage==="complete"}>Check against rails</button>
+      {stage==="review"&&<><button className="ref-btn ref-primary" onClick={approve} disabled={!d.keys||auto}>Approve</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={!d.keys||auto}>Refuse</button></>}
+      {stage==="approved"&&<><button className="ref-btn ref-primary" onClick={execute} disabled={!d.keys||auto}>Execute mock transfer</button><button className="ref-btn ref-secondary" onClick={refuse} disabled={!d.keys||auto}>Cancel instead</button></>}
      </div>
      {log.length>0&&<div className="demo-log-wrap"><div className="demo-log-head"><strong>Live log</strong><span>{auto?"● live":"stopped"}</span></div><ol className="demo-log" ref={logRef} aria-label="Live log" aria-live="polite">{log.map((l,i)=><li key={i}><time>{l.t}</time><b className={`who-${l.who}`}>{l.who}</b><span>{l.text}</span></li>)}</ol></div>}
     </section>
     <aside className="demo-panel">
      <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent&apos;s opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="checking"?"Checking":stage==="review"?"Needs your OK":stage==="approved"?"Approved":stage==="blocked"?"Blocked":stage==="refused"?"Refused":"Complete"}</span></div>
-     <div className="demo-notice">{note}</div>
+     <div className={`demo-notice ${stage === "blocked" || stage === "refused" ? "is-blocked" : stage === "review" ? "is-review" : stage === "approved" || stage === "complete" ? "is-approved" : ""}`}>{note}</div>
      {rules.map(([k,n,title])=><div className={`demo-rule mark-${marks[k]}`} key={k}><span>{markIcon[marks[k]]??n}</span><div><strong>{title}{marks[k]!=="idle"&&<small className="demo-mark">{markLabel[marks[k]]}</small>}</strong><p>{ruleText[k]}</p></div></div>)}
-     {receipts.slice().reverse().map(r=><div className="demo-receipt" key={r.id}><div className="demo-receipt-title">{r.recipient} · {r.amount} credits</div><div className="demo-receipt-meta">{r.decision}</div><p>{r.reason}</p><div className="demo-hash">{r.id} · {r.hash} · Demo receipt · Not in persistent chain</div></div>)}
+     {receipts.slice().reverse().map(r=><div className="demo-receipt" key={r.id}><div className="demo-receipt-title">{r.recipient} · {r.amount} credits</div><div className="demo-receipt-meta">{r.decision}</div><p>{r.reason}</p><div className="demo-hash">{r.id} · {r.hash} · Simulated demo receipt · SHA-256 recorded</div><Link href={`/receipts#receipt-${r.id}`}>Check this receipt in Receipts →</Link></div>)}
     </aside>
    </div>
-   <p className="demo-footnote">This is a safe, self-contained walkthrough. It does not call the receipt API, alter your configured rails, or move funds.</p>
+   <p className="demo-footnote">This walkthrough uses fixed demo rules and records simulated outcomes in your shared, server-backed receipt chain. It does not alter your configured rails or move funds.</p>
   </main>
  </div>;
 }

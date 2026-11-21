@@ -11,7 +11,8 @@ export type Proposal = {
   receiptIds: string[];
 };
 export type DeskReceipt = {
-  index: number; id: string; at: string; proposalId: string; event: "decided_by_rails" | "approved_by_owner" | "refused_by_owner";
+  index: number; id: string; at: string; proposalId: string; event: "decided_by_rails" | "approved_by_owner" | "refused_by_owner" | "demo_activity";
+  source?: "app" | "demo";
   outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string;
   previousHash: string; hash: string;
 };
@@ -184,6 +185,26 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     p.receiptIds.push(r.id);
     return publicProposal(p);
   });
+}
+
+export async function recordDemoEvent(key: string | null, input: unknown) {
+  const body = (input ?? {}) as Record<string, unknown>;
+  const recipient = typeof body.recipient === "string" ? body.recipient.trim().slice(0, 80) : "";
+  const amount = Number(body.amount);
+  const detail = typeof body.detail === "string" ? body.detail.slice(0, 500) : "";
+  const outcome = body.outcome;
+  if (!recipient || !Number.isFinite(amount) || !["approved", "needs_review", "blocked", "refused"].includes(String(outcome)) || !detail) {
+    throw new DeskError("A valid demo recipient, amount, outcome and detail are required.", 400);
+  }
+  return mutate(key, "owner", (desk) => appendReceipt(desk, {
+    proposalId: typeof body.demoId === "string" ? body.demoId.slice(0, 80) : "demo",
+    event: "demo_activity",
+    outcome: outcome as DeskReceipt["outcome"],
+    amount,
+    recipient,
+    detail,
+    source: "demo",
+  }));
 }
 
 export function verifyDeskChain(receipts: DeskReceipt[]) {
