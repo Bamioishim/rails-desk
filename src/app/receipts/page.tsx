@@ -38,7 +38,7 @@ export default function ReceiptsPage() {
   return <>
     <div className="page-head">
       <div>
-        <div className="eyebrow">AUDIT LOG / 03</div>
+        <div className="eyebrow">AUDIT LOG</div>
         <h1 className="page-title">Receipt chain</h1>
         <p className="page-sub">Every proposal your agent sends is decided by your rails and recorded here. Payments above your review limit wait for you.</p>
       </div>
