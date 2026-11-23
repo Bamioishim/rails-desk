@@ -54,7 +54,7 @@ export default function RailsPage() {
     try {
       await d.saveRules({ allowedRecipients, maxPerAction: Number(cap), reviewLimit: Number(review) });
       setRails({ spendingCap: Number(cap), allowedRecipients });
-      setSaved(true); setTimeout(() => setSaved(false), 2500);
+      setSaved(true);
     } catch (x) { setErr(x instanceof Error ? x.message : String(x)); }
   }
   async function submitProposal(e: React.FormEvent) {
@@ -90,11 +90,11 @@ export default function RailsPage() {
     </section>
 
     <div className="layout-grid"><form className="panel" onSubmit={save}><div className="section-head"><div><h2 className="panel-title">Transfer policy</h2><div className="panel-desc">Changes apply to new proposals and are checked again at approval time.</div></div></div>
-      <div className="field"><label htmlFor="cap">Maximum per action</label><input id="cap" type="number" min="0" step="0.01" value={cap} onChange={(e) => setCap(e.target.value)} required /><span className="hint">Any proposal above this amount is blocked.</span></div>
-      <div className="field"><label htmlFor="review">Review limit</label><input id="review" type="number" min="0" step="0.01" value={review} onChange={(e) => setReview(e.target.value)} required /><span className="hint">Allowed proposals above this amount need your OK on the Receipts page. At or below it they are approved automatically.</span></div>
-      <div className="field"><label htmlFor="recipients">Allowed recipients</label><textarea id="recipients" value={names} onChange={(e) => setNames(e.target.value)} placeholder={"Alex\nJordan\nSam"} style={{ minHeight: 120 }} /><span className="hint">One recipient per line or comma-separated. Matching ignores letter case and surrounding spaces.</span></div>
+      <div className="field"><label htmlFor="cap">Maximum per action</label><input id="cap" type="number" min="0" step="0.01" value={cap} onChange={(e) => { setCap(e.target.value); setSaved(false); }} required /><span className="hint">Any proposal above this amount is blocked.</span></div>
+      <div className="field"><label htmlFor="review">Review limit</label><input id="review" type="number" min="0" step="0.01" value={review} onChange={(e) => { setReview(e.target.value); setSaved(false); }} required /><span className="hint">Allowed proposals above this amount need your OK on the Receipts page. At or below it they are approved automatically.</span></div>
+      <div className="field"><label htmlFor="recipients">Allowed recipients</label><textarea id="recipients" value={names} onChange={(e) => { setNames(e.target.value); setSaved(false); }} placeholder={"Alex\nJordan\nSam"} style={{ minHeight: 120 }} /><span className="hint">One recipient per line or comma-separated. Matching ignores letter case and surrounding spaces.</span></div>
       
-      <button className="button primary" type="submit" disabled={!d.desk}>Save policy changes</button>{saved && <span style={{ marginLeft: 12, color: "var(--green)", fontSize: 12 }}>✓ Rails saved</span>}</form>
+      <button className="button primary" type="submit" disabled={!d.desk}>Save policy changes</button>{saved && <span role="status" aria-live="polite" style={{ marginLeft: 12, color: "var(--green)", fontSize: 12 }}>✓ Rails saved</span>}</form>
       <aside className="panel"><h2 className="panel-title">How the referee applies policy</h2><div className="step"><div className="step-num">1</div><div><strong>Validate the amount</strong><p>Block zero, negative, invalid or over-maximum amounts.</p></div></div><div className="step"><div className="step-num">2</div><div><strong>Check the recipient</strong><p>Require an exact case-insensitive match in your allowlist.</p></div></div><div className="step"><div className="step-num">3</div><div><strong>Apply the review limit</strong><p>Above it, the proposal waits for your Approve or Refuse.</p></div></div><div className="step"><div className="step-num">4</div><div><strong>Record the decision</strong><p>Append the proposal and outcome to the receipt hash chain.</p></div></div></aside></div>
 
     <div className="panel" style={{ marginTop: 15 }} id="connect">
