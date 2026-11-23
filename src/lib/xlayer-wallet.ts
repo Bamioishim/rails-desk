@@ -121,7 +121,13 @@ export async function sendTestnetOkbTransfer({ to, amountCredits, anchor }: { to
     data: concatHex([ANCHOR_TAG, anchor]),
     chain: xLayerTestnet,
   });
-  const receipt = await testnetClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+  let receipt;
+  try {
+    receipt = await testnetClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+  } catch {
+    // Preserve the submitted hash so the owner can retry server verification without sending twice.
+    return { hash, from, to, units, blockNumber: "pending", chainId: xLayerTestnet.id };
+  }
   if (receipt.status !== "success") throw new Error("The X Layer testnet transfer reverted.");
   return { hash, from, to, units, blockNumber: receipt.blockNumber.toString(), chainId: xLayerTestnet.id };
 }
