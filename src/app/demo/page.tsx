@@ -7,7 +7,7 @@ import {useDesk} from "@/components/desk";
 type Stage = "idle" | "typing" | "checking" | "review" | "approved" | "blocked" | "refused" | "complete";
 type Mark = "idle" | "checking" | "pass" | "flag" | "fail" | "skip";
 type RuleKey = "cap" | "allow" | "review";
-type DemoReceipt = {id:string;recipient:string;amount:number;decision:string;reason:string;hash:string};
+type DemoReceipt = {id:string;recipient:string;amount:number;decision:string;reason:string;hash:string;persistent:boolean};
 type LogLine = {t:string;who:"agent"|"referee"|"you"|"executor"|"demo";text:string};
 type StepState = {label:string;status:"pending"|"running"|"done";outcome?:string};
 
@@ -15,7 +15,7 @@ const wait = (ms:number) => new Promise<void>(resolve => window.setTimeout(resol
 const REVIEW_LIMIT = 10;
 const CAP = 20;
 const ALLOWED = ["Alex","Jordan","Sam"];
-const IDLE_NOTE = "The demo uses fixed walkthrough rules. Simulated outcomes are saved to the shared receipt chain; no funds move.";
+const IDLE_NOTE = "The guided walkthrough saves simulated outcomes to the shared receipt chain. Manual checks and mock execution stay local; no funds move.";
 const IDLE_MARKS: Record<RuleKey,Mark> = {cap:"idle",allow:"idle",review:"idle"};
 const isAllowed = (name:string) => ALLOWED.some(n=>n.toLowerCase()===name.trim().toLowerCase());
 const clock = () => new Date().toLocaleTimeString("en-GB",{hour12:false});
@@ -142,9 +142,9 @@ export default function GuidedDemoPage(){
   const capOk=Number.isFinite(value)&&value>0&&value<=CAP, allowOk=isAllowed(recipient);
   setMarks({cap:capOk?"pass":"fail",allow:allowOk?"pass":"fail",review:!capOk||!allowOk?"skip":value>REVIEW_LIMIT?"flag":"pass"});
   say("you",`check { recipient: "${recipient}", amount: ${amount||"?"} }`);
-  if(!Number.isFinite(value)||value<=0){setStage("blocked");addReceipt({recipient,amount:value,decision:"Blocked",reason:"Amount must be greater than zero."});setNote("Blocked: the amount must be a positive number.");say("referee","decision: BLOCKED (amount)");return;}
-  if(value>CAP){setStage("blocked");addReceipt({recipient,amount:value,decision:"Blocked",reason:`Amount exceeds the demo cap of ${CAP} credits.`});setNote(`Blocked: this proposal exceeds the ${CAP}-credit spending cap.`);say("referee","decision: BLOCKED (spending cap)");return;}
-  if(!allowOk){setStage("blocked");addReceipt({recipient,amount:value,decision:"Blocked",reason:"Recipient is not on the demo allowlist."});setNote("Blocked: this recipient is not on the allowed list.");say("referee","decision: BLOCKED (allowlist)");return;}
+  if(!Number.isFinite(value)||value<=0){setStage("blocked");addLocalReceipt({recipient,amount:value,decision:"Blocked",reason:"Amount must be greater than zero."});setNote("Blocked: the amount must be a positive number.");say("referee","decision: BLOCKED (amount)");return;}
+  if(value>CAP){setStage("blocked");addLocalReceipt({recipient,amount:value,decision:"Blocked",reason:`Amount exceeds the demo cap of ${CAP} credits.`});setNote(`Blocked: this proposal exceeds the ${CAP}-credit spending cap.`);say("referee","decision: BLOCKED (spending cap)");return;}
+  if(!allowOk){setStage("blocked");addLocalReceipt({recipient,amount:value,decision:"Blocked",reason:"Recipient is not on the demo allowlist."});setNote("Blocked: this recipient is not on the allowed list.");say("referee","decision: BLOCKED (allowlist)");return;}
   if(value<=REVIEW_LIMIT){setStage("approved");setNote(`Within the demo policy and under the ${REVIEW_LIMIT}-credit review limit, so it is approved without a person. Execution is still a separate step. No transfer has occurred.`);say("referee","decision: APPROVED");return;}
   setStage("review");setNote(`Needs your OK: above the ${REVIEW_LIMIT}-credit review limit. The proposal is waiting for your explicit approval. No transfer has occurred.`);say("referee","decision: NEEDS YOUR OK");
  };
@@ -175,7 +175,7 @@ export default function GuidedDemoPage(){
     <Link href="/" className="ref-btn ref-secondary">Exit demo</Link>
    </div>
    <div className="demo-toolbar">
-    <div><span className="demo-pill">Isolated demo</span><span className="demo-toolbar-copy">{caption ?? "No shared policy or receipt data is changed."}</span></div>
+    <div><span className="demo-pill">Isolated demo</span><span className="demo-toolbar-copy">{caption ?? "No shared policy is changed. Manual test results stay local."}</span></div>
     <div className="demo-actions">
      <button className="ref-btn ref-primary" onClick={()=>void play()} disabled={auto||!d.keys}>{!d.keys?"Connecting…":auto?"Playing":played?"Play again":"Play walkthrough"}</button>
      <button className="ref-btn ref-secondary" onClick={takeControl} disabled={!auto}>Take control</button>
@@ -208,10 +208,10 @@ export default function GuidedDemoPage(){
      <div className="demo-section-head"><div><h2>Referee decision</h2><p>Deterministic checks, not an agent&apos;s opinion.</p></div><span className="demo-pill">{stage==="idle"||stage==="typing"?"Waiting":stage==="checking"?"Checking":stage==="review"?"Needs your OK":stage==="approved"?"Approved":stage==="blocked"?"Blocked":stage==="refused"?"Refused":"Complete"}</span></div>
      <div className={`demo-notice ${stage === "blocked" || stage === "refused" ? "is-blocked" : stage === "review" ? "is-review" : stage === "approved" || stage === "complete" ? "is-approved" : ""}`}>{note}</div>
      {rules.map(([k,n,title])=><div className={`demo-rule mark-${marks[k]}`} key={k}><span>{markIcon[marks[k]]??n}</span><div><strong>{title}{marks[k]!=="idle"&&<small className="demo-mark">{markLabel[marks[k]]}</small>}</strong><p>{ruleText[k]}</p></div></div>)}
-     {receipts.slice().reverse().map(r=><div className="demo-receipt" key={r.id}><div className="demo-receipt-title">{r.recipient} · {r.amount} credits</div><div className="demo-receipt-meta">{r.decision}</div><p>{r.reason}</p><div className="demo-hash">{r.id} · {r.hash} · Simulated demo receipt · SHA-256 recorded</div><Link href={`/receipts#receipt-${r.id}`}>Check this receipt in Receipts →</Link></div>)}
+     {receipts.slice().reverse().map(r=><div className="demo-receipt" key={r.id}><div className="demo-receipt-title">{r.recipient} · {r.amount} credits</div><div className="demo-receipt-meta">{r.decision}</div><p>{r.reason}</p>{r.persistent?<><div className="demo-hash">{r.id} · {r.hash} · Simulated demo receipt · SHA-256 recorded</div><Link href={`/receipts#receipt-${r.id}`}>Check this receipt in Receipts →</Link></>:<div className="demo-hash">Local-only demo result · Not saved to the shared receipt chain</div>}</div>)}
     </aside>
    </div>
-   <p className="demo-footnote">This walkthrough uses fixed demo rules and records simulated outcomes in your shared, server-backed receipt chain. It does not alter your configured rails or move funds.</p>
+   <p className="demo-footnote">Play walkthrough uses fixed demo rules and records its simulated outcomes in your shared, server-backed receipt chain. Manual checks and mock execution stay local. Neither flow alters your configured rails or moves funds.</p>
   </main>
  </div>;
 }
