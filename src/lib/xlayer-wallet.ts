@@ -126,6 +126,28 @@ export async function sendTestnetOkbTransfer({ to, amountCredits, anchor }: { to
   return { hash, from, to, units, blockNumber: receipt.blockNumber.toString(), chainId: xLayerTestnet.id };
 }
 
+
+/** Owner-signed zero-value transaction that anchors the current receipt-chain head in calldata. */
+export async function sendReceiptHeadAnchor({ headHash }: { headHash: Hex }) {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(headHash)) throw new Error("Receipt head must be a 32-byte hash.");
+  const provider = injectedProvider();
+  if (!provider) throw new Error("No browser wallet found. Install OKX Wallet, MetaMask or Rabby.");
+  await ensureTestnet();
+  const wallet = createWalletClient({ chain: xLayerTestnet, transport: custom(provider) });
+  const [from] = await wallet.requestAddresses();
+  if (!from) throw new Error("The connected wallet did not provide an account.");
+  const hash = await wallet.sendTransaction({
+    account: from,
+    to: from,
+    value: 0n,
+    data: concatHex([ANCHOR_TAG, headHash]),
+    chain: xLayerTestnet,
+  });
+  const receipt = await testnetClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+  if (receipt.status !== "success") throw new Error("The receipt-head anchor transaction reverted.");
+  return { hash, from, blockNumber: receipt.blockNumber.toString(), chainId: xLayerTestnet.id };
+}
+
 /** Re-reads a transfer from X Layer testnet and checks the receipt hash is in its calldata. */
 export async function verifyAnchor(hash: Hex, anchor: Hex) {
   const tx = await testnetClient.getTransaction({ hash });
