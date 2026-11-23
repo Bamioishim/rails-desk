@@ -72,6 +72,11 @@ describe("concurrent proposals across instances", () => {
     expect(new Set(results.map((r) => r.receipt_id)).size).toBe(N);
 
     const state = await two.desk.getDesk(ownerKey);
+    // A fresh module instance reads the same Redis-backed state, simulating another server instance.
+    const restarted = await instance();
+    const afterRestart = await restarted.desk.getDesk(ownerKey);
+    expect(afterRestart.receipts).toHaveLength(N);
+    expect(afterRestart.receipts.every((receipt) => receipt.policySnapshot?.rules.maxPerAction === 20)).toBe(true);
     expect(state.proposals).toHaveLength(N);
     expect(state.receipts).toHaveLength(N);
     expect(state.receipts.map((r) => r.index)).toEqual(Array.from({ length: N }, (_, i) => i + 1));
@@ -90,6 +95,8 @@ describe("concurrent proposals across instances", () => {
     expect(out.filter((o) => o.status === "rejected").map((o) => String((o as PromiseRejectedResult).reason))[0]).toMatch(/Already/);
     const state = await one.desk.getDesk(ownerKey);
     expect(state.receipts).toHaveLength(2);
+    expect(state.receipts[0].policySnapshot?.rules.reviewLimit).toBe(10);
+    expect(state.receipts[1].policySnapshot?.rules.reviewLimit).toBe(10);
     expect(one.desk.verifyDeskChain(state.receipts).valid).toBe(true);
   });
 });
