@@ -6,8 +6,7 @@ export function ownerCredential(request: Request): string | null {
   if (value) {
     try { return decodeURIComponent(value); } catch { return null; }
   }
-  // Keep explicit bearer auth available for trusted server-side integrations.
-  return request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim() || null;
+  return request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || null;
 }
 
 export function ownerCookie(ownerKey: string, maxAge = 60 * 60 * 24 * 30): string {
