@@ -76,6 +76,16 @@ describe("desk API flow", () => {
     expect(afterRefusal.status).toBe("approved");
   });
 
+  it("rechecks the daily cap when an owner approves a pending proposal", async () => {
+    const { ownerKey, agentKey } = await createDesk("Daily cap approval recheck");
+    await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
+    const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Needs owner review" });
+    expect(pending.status).toBe("needs_review");
+    await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 10 });
+    await expect(decide(ownerKey, pending.id, "approve")).rejects.toThrow(/current rules block/);
+    expect((await getProposal(agentKey, pending.id)).awaiting_review).toBe(true);
+  });
+
   it("rejects bad keys and bad bodies", async () => {
     await expect(propose(null, { amount: 1, recipient: "Alex" })).rejects.toThrow(/API key/);
     const { agentKey } = await createDesk();
