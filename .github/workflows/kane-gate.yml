@@ -1,5 +1,5 @@
 # Active copy of ci/kane-gate.yml. Runs on pull requests and on demand (Actions → Kane gate → Run workflow).
-# Not on every push to main, to save Kane credits.
+# Runs on pull requests and main so the merged commit receives its own fresh gate result.
 name: Kane gate
 
 # Runs the Kane CLI browser tests against a fresh build of this PR and fails the check
@@ -9,6 +9,8 @@ name: Kane gate
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

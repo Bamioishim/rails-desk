@@ -16,7 +16,8 @@
     "kane:gate": "node scripts/kane-gate.mjs",
     "kane:gate:ci": "node scripts/kane-gate.mjs",
     "hooks:install": "git config core.hooksPath .githooks && echo 'Kane pre-push gate enabled (.githooks/pre-push)'",
-    "hooks:uninstall": "git config --unset core.hooksPath || true"
+    "hooks:uninstall": "git config --unset core.hooksPath || true",
+    "verify:production": "node scripts/verify-production-redis.mjs"
   },
   "dependencies": {
     "next": "16.4.6",
