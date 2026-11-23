@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { OWNER_COOKIE, ownerCookie, ownerCredential } from "../server/session";
 
 describe("owner session cookie", () => {
@@ -17,15 +17,14 @@ describe("owner session cookie", () => {
   });
 
   it("sets HttpOnly, SameSite=Strict and Secure in production", () => {
-    const previous = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     try {
       const value = ownerCookie("rd_owner_12345678_secretsecretsecret");
       expect(value).toContain("HttpOnly");
       expect(value).toContain("SameSite=Strict");
       expect(value).toContain("Secure");
     } finally {
-      process.env.NODE_ENV = previous;
+      vi.unstubAllEnvs();
     }
   });
 });
