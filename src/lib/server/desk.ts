@@ -237,9 +237,10 @@ export async function recordReceiptHeadAnchor(key: string | null, input: unknown
     const stillInChain = current.receipts.some((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
     if (!stillInChain) throw new DeskError("The receipt chain changed while the anchor was being verified. Refresh and try again.", 409);
     current.anchors ??= [];
-    if (current.anchors.some((item) => item.txHash.toLowerCase() === txHash)) throw new DeskError("This anchor transaction has already been recorded.", 409);
+    if (current.anchors.some((item) => item.txHash.toLowerCase() === txHash || (item.receiptIndex === receiptIndex && item.receiptHash === receiptHash))) throw new DeskError("This receipt head has already been anchored.", 409);
     current.anchors.push({ receiptIndex, receiptHash, ...verified });
-    return current.anchors.at(-1);
+    current.anchors.sort((a, b) => a.receiptIndex - b.receiptIndex);
+    return current.anchors.find((item) => item.txHash.toLowerCase() === txHash);
   });
 }
 
