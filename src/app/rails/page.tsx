@@ -75,7 +75,7 @@ export default function RailsPage() {
   const fetchMcp = `curl -o rails-desk-mcp.mjs ${origin}/rails-desk-mcp.mjs`;
 
   return <><div className="page-head"><div><div className="eyebrow">POLICY CONFIGURATION</div><h1 className="page-title">Set your rails</h1><p className="page-sub">Define the boundaries your agent cannot cross. The referee checks every proposal against these rules before recording a decision.</p></div><span className="tag">USER-DEFINED POLICY</span></div>
-    {(err || d.error) && <div className="notice warn" style={{ marginBottom: 16 }}>{err || d.error}{d.error && <> <button type="button" className="button ghost button-small" onClick={() => { d.forget(); setLoaded(false); }}>Start a new desk</button></>}</div>}
+    {(err || d.error) && <div className="notice warn" style={{ marginBottom: 16 }}>{err || d.error}{d.error && <> <button type="button" className="button ghost button-small" onClick={() => { void d.forget().then(() => setLoaded(false)); }}>Start a new desk</button></>}</div>}
     <section className="panel" style={{ marginBottom: 15 }} id="new-proposal">
       <div className="section-head"><div><h2 className="panel-title">Submit a payment proposal</h2><div className="panel-desc">This sends a real proposal to Rails Desk. Your rules decide whether it is approved, blocked, or sent to you for review. No funds are transferred.</div></div><span className="tag">LIVE PROPOSAL</span></div>
       <form onSubmit={submitProposal}>
