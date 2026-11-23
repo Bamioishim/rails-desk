@@ -11,6 +11,7 @@ export async function verifyXLayerTestnetTransfer(input: {
   txHash: Hex;
   payTo: `0x${string}`;
   amountCredits: number;
+  approvedAt: string;
   anchor: Hex;
 }) {
   if (!isAddress(input.payTo)) throw new Error("Recipient must be a valid EVM address.");
@@ -19,6 +20,11 @@ export async function verifyXLayerTestnetTransfer(input: {
     client.getTransactionReceipt({ hash: input.txHash }),
   ]);
   if (receipt.status !== "success") throw new Error("The X Layer testnet transaction did not succeed.");
+  const minedBlock = await client.getBlock({ blockNumber: receipt.blockNumber });
+  const approvedAt = Date.parse(input.approvedAt);
+  if (!Number.isFinite(approvedAt) || Number(minedBlock.timestamp) * 1000 < approvedAt) {
+    throw new Error("The testnet transfer must be mined after the proposal was approved.");
+  }
   if (tx.chainId !== xLayerTestnet.id) throw new Error("Transaction is not on X Layer testnet.");
   if (!tx.to || tx.to.toLowerCase() !== input.payTo.toLowerCase()) throw new Error("Transaction recipient does not match the approved recipient address.");
   const rate = Number(process.env.NEXT_PUBLIC_DEMO_OKB_PER_USD ?? "0.0001");
