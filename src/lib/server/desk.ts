@@ -4,16 +4,19 @@ import { loadVersioned, saveRaw, storageMode, StoreBusyError, withLock } from ".
 export type Rules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number };
 export type Status = "approved" | "needs_review" | "blocked";
 export type Check = { rule: "amount" | "max_per_action" | "allowlist" | "review_limit"; passed: boolean; detail: string };
+export type PolicySnapshot = { rules: Rules; checks: Check[] };
 export type Proposal = {
   id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string;
-  status: Status; checks: Check[]; reasons: string[];
-  review: null | { decision: "approved" | "refused"; at: string; note?: string };
+  status: Status; checks: Check[]; reasons: string[]; policySnapshot?: PolicySnapshot;
+  review: null | { decision: "approved" | "refused"; at: string; note?: string; policySnapshot?: PolicySnapshot };
   receiptIds: string[];
 };
 export type DeskReceipt = {
   index: number; id: string; at: string; proposalId: string; event: "decided_by_rails" | "approved_by_owner" | "refused_by_owner" | "demo_activity";
   source?: "app" | "demo";
   outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string;
+  /** Immutable rules and checks used for this event. Older receipts may not have a snapshot. */
+  policySnapshot?: PolicySnapshot;
   previousHash: string; hash: string;
 };
 type Desk = {
@@ -99,6 +102,10 @@ export function evaluate(amount: number, recipient: string, rules: Rules): { sta
   return { status: blocked ? "blocked" : underReview ? "approved" : "needs_review", checks };
 }
 
+function snapshotPolicy(rules: Rules, checks: Check[]): PolicySnapshot {
+  return { rules: { ...rules, allowedRecipients: [...rules.allowedRecipients] }, checks: checks.map((check) => ({ ...check })) };
+}
+
 function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
   const previousHash = desk.receipts.at(-1)?.hash ?? GENESIS;
   const base = { index: (desk.receipts.at(-1)?.index ?? 0) + 1, id: newId("rcpt"), at: new Date().toISOString(), ...r, previousHash };
@@ -115,7 +122,7 @@ export function publicDesk(desk: Desk) {
 }
 export function publicProposal(p: Proposal) {
   const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
-  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, created_at: p.createdAt };
+  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, created_at: p.createdAt };
 }
 
 export async function createDesk(name?: string) {
@@ -152,9 +159,10 @@ export async function propose(key: string | null, body: unknown) {
   if (b.amount === undefined || b.amount === null || Number.isNaN(amount)) throw new DeskError("amount (number) is required.", 400);
   return mutate(key, "any", (desk) => {
     const { status, checks } = evaluate(amount, recipient, desk.rules);
-    const proposal: Proposal = { id: newId("prop"), createdAt: new Date().toISOString(), amount, recipient, reason, agent, status, checks, reasons: checks.filter((c) => !c.passed || (c.rule === "review_limit" && status === "needs_review")).map((c) => c.detail), review: null, receiptIds: [] };
+    const policySnapshot = snapshotPolicy(desk.rules, checks);
+    const proposal: Proposal = { id: newId("prop"), createdAt: new Date().toISOString(), amount, recipient, reason, agent, status, checks, reasons: checks.filter((c) => !c.passed || (c.rule === "review_limit" && status === "needs_review")).map((c) => c.detail), policySnapshot, review: null, receiptIds: [] };
     if (status === "approved") proposal.reasons = ["Within every rule, so it is approved without a person."];
-    const receipt = appendReceipt(desk, { proposalId: proposal.id, event: "decided_by_rails", outcome: status, amount, recipient, detail: proposal.reasons.join(" ") });
+    const receipt = appendReceipt(desk, { proposalId: proposal.id, event: "decided_by_rails", outcome: status, amount, recipient, detail: proposal.reasons.join(" "), policySnapshot });
     proposal.receiptIds.push(receipt.id);
     desk.proposals.push(proposal);
     if (desk.proposals.length > MAX_PROPOSALS) desk.proposals = desk.proposals.slice(-MAX_PROPOSALS);
@@ -180,8 +188,9 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     // Re-check against the current rules: a payment blocked by today's rules cannot be approved.
     const recheck = evaluate(p.amount, p.recipient, desk.rules);
     if (decision === "approve" && recheck.status === "blocked") throw new DeskError("The current rules block this payment, so it cannot be approved.", 409);
-    p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined };
-    const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review." });
+    const policySnapshot = snapshotPolicy(desk.rules, recheck.checks);
+    p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined, policySnapshot };
+    const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review.", policySnapshot });
     p.receiptIds.push(r.id);
     return publicProposal(p);
   });
