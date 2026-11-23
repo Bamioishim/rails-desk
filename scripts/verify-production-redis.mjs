@@ -8,11 +8,10 @@ async function request(path, init = {}) {
 }
 
 const created = await request("/api/v1/desks", { method: "POST", body: JSON.stringify({ name: "Production Redis smoke test" }) });
-const ownerKey = created.body.ownerKey;
 const agentKey = created.body.agentKey;
 const cookie = created.response.headers.get("set-cookie")?.split(";")[0];
-if (!agentKey || (!ownerKey && !cookie)) throw new Error("Desk creation did not return an agent key and owner session.");
-const ownerHeaders = cookie ? { cookie } : { authorization: "Bearer " + ownerKey };
+if (!agentKey || !cookie || created.body.ownerKey) throw new Error("Expected an agent key and HttpOnly owner cookie, with no owner key in the JSON response.");
+const ownerHeaders = { cookie };
 
 const proposal = await request("/api/v1/proposals", {
   method: "POST",
