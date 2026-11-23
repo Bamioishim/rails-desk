@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 
 const base = process.env.RAILS_DESK_URL;
 const key = process.env.RAILS_DESK_AGENT_KEY;
@@ -9,8 +10,8 @@ if (!base || !key) {
   process.exit(1);
 }
 
-const serverPath = new URL("../../public/rails-desk-mcp.mjs", import.meta.url);
-const child = spawn(process.execPath, [serverPath.pathname], {
+const serverPath = fileURLToPath(new URL("../../public/rails-desk-mcp.mjs", import.meta.url));
+const child = spawn(process.execPath, [serverPath], {
   env: { ...process.env, RAILS_DESK_URL: base, RAILS_DESK_AGENT_KEY: key },
   stdio: ["pipe", "pipe", "inherit"],
 });
