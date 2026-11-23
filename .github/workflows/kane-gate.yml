@@ -56,6 +56,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
       - name: Install Kane CLI
         run: npm install -g @testmuai/kane-cli@0.10.6
       - name: Kane gate
