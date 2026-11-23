@@ -54,7 +54,7 @@ POST /api/v1/proposals ──► Policy evaluator
 ~~~
 
 - **Next.js App Router** serves the web app and JSON API.
-- **Policy engine** checks positive amounts, per-action maximum, case-insensitive recipient allowlist, and owner review threshold. Policy snapshots are recorded with decisions.
+- **Policy engine** checks positive amounts, per-action maximum, a UTC-calendar-day spend cap (including proposals awaiting owner review), case-insensitive recipient allowlist, and owner review threshold. Policy snapshots are recorded with decisions.
 - **Owner session** uses a same-site HttpOnly cookie, Secure in production. The agent key remains in browser storage only so the owner can copy it into an agent client.
 - **Storage** uses Upstash Redis when configured; local development can use JSON files. On serverless hosting, filesystem fallback is temporary and is not durable.
 - **Receipts** form a SHA-256-linked sequence. This is tamper-evident within the stored record, not an independently anchored public proof.
@@ -90,6 +90,10 @@ The response includes the proposal status, decision reasons, and receipt_id.
 ## MCP
 
 Download [rails-desk-mcp.mjs](https://rails-desk.vercel.app/rails-desk-mcp.mjs) and configure your MCP client with RAILS_DESK_URL and RAILS_DESK_AGENT_KEY. It exposes propose_payment and get_proposal.
+
+## MCP examples
+
+Runnable setup instructions for Claude Desktop, Cursor, and a custom Node.js MCP client are in [`examples/mcp/`](examples/mcp/README.md). The custom client submits a proposal and reads its status after owner review; it does not execute a payment.
 
 ## Current limits
 
