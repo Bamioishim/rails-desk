@@ -97,11 +97,12 @@ Runnable setup instructions for Claude Desktop, Cursor, and a custom Node.js MCP
 
 ## Current limits
 
-- No blockchain transaction or real-money transfer is executed.
-- An owner approval is a recorded decision only.
+- Settlement is limited to native test OKB on X Layer testnet. It requires an injected owner wallet and testnet funds; no mainnet or real-money transfer is supported.
+- Owner approval and settlement are separate states. An approved proposal is not settled until the server verifies the successful testnet transaction.
+- Receipt-head anchoring is owner-triggered from the Receipts page, with a suggested interval of every 25 new receipts. It uses a zero-value self-transaction rather than a deployed registry contract. The live wallet transaction flow still needs end-to-end verification before production claims.
 - The production smoke test checks Redis persistence against the live deployment; see the verification notes and latest GitHub Actions result.
 - The receipt chain is hash-linked and server-verified. Testnet anchors are stored with the desk and link to the transaction on the X Layer testnet explorer.
-- Phone approvals and external on-chain settlement are not implemented.
+- Phone approvals and automatic scheduled anchoring are not implemented.
 
 ## More documentation
 
