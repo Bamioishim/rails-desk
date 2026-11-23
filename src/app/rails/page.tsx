@@ -62,7 +62,7 @@ export default function RailsPage() {
     setSubmitting(true); setTest(null);
     try {
       const r = await d.submitProposal({ recipient: proposalRecipient.trim(), amount: Number(proposalAmount), reason: proposalReason.trim() });
-      if (r) { setTest(decisionMessage(proposalRecipient, r.status, r.reasons)); setTestTone(r.status === "approved" ? "approved" : r.status === "needs_review" ? "review" : "warn"); }
+      if (r) { setTest(`${decisionMessage(proposalRecipient, r.status, r.reasons)} ${r.reasons.join(" ")} Receipt: ${r.receipt_id}`); setTestTone(r.status === "approved" ? "approved" : r.status === "needs_review" ? "review" : "warn"); }
       await d.refresh();
     } catch (x) { setTest(x instanceof Error ? x.message : String(x)); }
     finally { setSubmitting(false); }
