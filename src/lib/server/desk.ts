@@ -23,7 +23,7 @@ export type DeskReceipt = {
 type Desk = {
   version: 1; id: string; name: string; createdAt: string;
   ownerKeyHash: string; agentKeyHash: string; agentKeyHint: string;
-  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[];
+  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; anchors?: { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: 1952; blockNumber: string; anchoredAt: string }[];
 };
 
 export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10, dailySpendCap: 100 };
@@ -129,7 +129,7 @@ function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | 
 export function publicDesk(desk: Desk) {
   const { ownerKeyHash: _o, agentKeyHash: _a, ...rest } = desk;
   void _o; void _a;
-  return { ...rest, storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
+  return { ...rest, anchors: desk.anchors ?? [], storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
 }
 export function publicProposal(p: Proposal) {
   const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
@@ -140,7 +140,7 @@ export async function createDesk(name?: string) {
   const id = randomBytes(8).toString("hex");
   const ownerKey = `rd_owner_${id}_${token()}`;
   const agentKey = `rd_agent_${id}_${token()}`;
-  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [] };
+  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [], anchors: [] };
   await saveRaw(id, JSON.stringify(desk));
   return { desk: publicDesk(desk), ownerKey, agentKey };
 }
@@ -212,6 +212,30 @@ export async function decide(key: string | null, id: string, decision: unknown, 
   });
 }
 
+
+
+export async function recordReceiptHeadAnchor(key: string | null, input: unknown) {
+  const body = (input ?? {}) as Record<string, unknown>;
+  const txHash = typeof body.txHash === "string" ? body.txHash.toLowerCase() : "";
+  const receiptHash = typeof body.receiptHash === "string" ? body.receiptHash.toLowerCase() : "";
+  const receiptIndex = Number(body.receiptIndex);
+  if (!/^0x[0-9a-f]{64}$/.test(txHash) || !/^[0-9a-f]{64}$/.test(receiptHash) || !Number.isSafeInteger(receiptIndex) || receiptIndex < 1) {
+    throw new DeskError("A valid transaction hash, receipt hash and receipt index are required.", 400);
+  }
+  const { desk } = await authed(key, "owner");
+  const head = desk.receipts.at(-1);
+  if (!head || head.index !== receiptIndex || head.hash !== receiptHash) throw new DeskError("Only the current receipt-chain head can be anchored.", 409);
+  const { verifyXLayerReceiptHeadAnchor } = await import("./xlayer-settlement");
+  const verified = await verifyXLayerReceiptHeadAnchor({ txHash: txHash as `0x${string}`, anchor: ("0x" + receiptHash) as `0x${string}` });
+  return mutate(key, "owner", (current) => {
+    const currentHead = current.receipts.at(-1);
+    if (!currentHead || currentHead.index !== receiptIndex || currentHead.hash !== receiptHash) throw new DeskError("The receipt chain changed while the anchor was being verified. Refresh and try again.", 409);
+    current.anchors ??= [];
+    if (current.anchors.some((item) => item.txHash.toLowerCase() === txHash)) throw new DeskError("This anchor transaction has already been recorded.", 409);
+    current.anchors.push({ receiptIndex, receiptHash, ...verified });
+    return current.anchors.at(-1);
+  });
+}
 
 export async function recordTestnetSettlement(key: string | null, id: string, input: unknown) {
   const body = (input ?? {}) as Record<string, unknown>;
