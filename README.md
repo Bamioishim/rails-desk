@@ -4,6 +4,12 @@ Rails Desk is a safety layer for AI agents that propose payments. It checks each
 
 [Live app](https://rails-desk.vercel.app) · [Demo video](https://youtu.be/D_56omuFeks) · [GitHub](https://github.com/Bamioishim/rails-desk)
 
+## Verification status
+
+- **Manual browser acceptance: 5/5 passed** on 24 November 2026, covering landing/demo entry, the full walkthrough, owner approval and testnet settlement, blocked-recipient handling, and agent review.
+- **Latest recorded automated Kane run: 4/5.** Its remaining browser scenario stopped when the Kane service returned `insufficient credits`; it did not produce an application assertion failure. See [verification details](docs/verification.md).
+- Do not rerun the paid Kane browser suite until its credits are replenished.
+
 ## Quickstart
 
 Requires Node.js 20+.
@@ -21,6 +27,7 @@ Run the checks:
 
 ~~~bash
 npm test
+npm run typecheck
 npm run lint
 npm run build
 ~~~
@@ -85,9 +92,9 @@ The app's session endpoint at /api/v1/session is used for one-time migration of 
 Example agent request:
 
 ~~~bash
-curl -X POST https://rails-desk.vercel.app/api/v1/proposals \
-  -H "Authorization: Bearer rd_agent_..." \
-  -H "Content-Type: application/json" \
+curl -X POST https://rails-desk.vercel.app/api/v1/proposals \\
+  -H "Authorization: Bearer rd_agent_..." \\
+  -H "Content-Type: application/json" \\
   -d '{"amount":8,"recipient":"Alex","reason":"Design invoice"}'
 ~~~
 
@@ -106,12 +113,11 @@ Runnable setup instructions for Claude Desktop, Cursor, and a custom Node.js MCP
 - Settlement is limited to native test OKB on X Layer testnet. It requires an injected owner wallet and testnet funds; no mainnet or real-money transfer is supported.
 - Owner approval and settlement are separate states. An approved proposal is not settled until the server verifies the successful testnet transaction.
 - Receipt-head anchoring is owner-triggered from the Receipts page, with a suggested interval of every 25 new receipts. It uses a zero-value self-transaction rather than a deployed registry contract. The live wallet transaction flow still needs end-to-end verification before production claims.
-- The production smoke test checks Redis persistence against the live deployment; see the verification notes and latest GitHub Actions result.
+- The production smoke test checks Redis persistence against the live deployment; see [verification notes](docs/verification.md).
 - The receipt chain is hash-linked and server-verified. Testnet anchors are stored with the desk and link to the transaction on the X Layer testnet explorer.
 - Phone approvals and automatic scheduled anchoring are not implemented.
 
 ## More documentation
 
 - [Security model and deployment controls](docs/security.md)
-- [Verification, Kane gate, and production persistence checks](docs/verification.md)
-- [Historical Kane evidence](docs/kane-evidence/)
+- [Verification and test evidence](docs/verification.md)
