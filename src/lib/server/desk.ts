@@ -223,6 +223,7 @@ export async function recordReceiptHeadAnchor(key: string | null, input: unknown
     throw new DeskError("A valid transaction hash, receipt hash and receipt index are required.", 400);
   }
   const { desk } = await authed(key, "owner");
+  if (!verifyDeskChain(desk.receipts).valid) throw new DeskError("The receipt chain failed verification; refusing to anchor it.", 409);
   const head = desk.receipts.find((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
   if (!head) throw new DeskError("The supplied receipt head is not part of this desk's current chain.", 409);
   const { verifyXLayerReceiptHeadAnchor } = await import("./xlayer-settlement");
