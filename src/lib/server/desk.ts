@@ -1,9 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { loadVersioned, saveRaw, storageMode, StoreBusyError, withLock } from "./desk-store";
 
-export type Rules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number };
+export type Rules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number; dailySpendCap: number };
 export type Status = "approved" | "needs_review" | "blocked";
-export type Check = { rule: "amount" | "max_per_action" | "allowlist" | "review_limit"; passed: boolean; detail: string };
+export type Check = { rule: "amount" | "max_per_action" | "allowlist" | "review_limit" | "daily_spend_cap"; passed: boolean; detail: string };
 export type PolicySnapshot = { rules: Rules; checks: Check[] };
 export type Proposal = {
   id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string;
@@ -25,7 +25,7 @@ type Desk = {
   rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[];
 };
 
-export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10 };
+export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10, dailySpendCap: 100 };
 const GENESIS = "0".repeat(64);
 const MAX_PROPOSALS = 500;
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -82,10 +82,11 @@ export function cleanRules(input: unknown): Rules {
   const r = (input ?? {}) as Partial<Rules>;
   const names = Array.isArray(r.allowedRecipients) ? r.allowedRecipients.map((x) => String(x).trim()).filter(Boolean).slice(0, 200) : [];
   const uniq = [...new Map(names.map((n) => [n.toLowerCase(), n.slice(0, 80)])).values()];
-  const max = Number(r.maxPerAction), review = Number(r.reviewLimit);
+  const max = Number(r.maxPerAction), review = Number(r.reviewLimit), daily = Number(r.dailySpendCap ?? DEFAULT_RULES.dailySpendCap);
   if (!Number.isFinite(max) || max < 0) throw new DeskError("maxPerAction must be a number of 0 or more.", 400);
   if (!Number.isFinite(review) || review < 0) throw new DeskError("reviewLimit must be a number of 0 or more.", 400);
-  return { allowedRecipients: uniq, maxPerAction: Math.round(max * 100) / 100, reviewLimit: Math.round(Math.min(review, max) * 100) / 100 };
+  if (!Number.isFinite(daily) || daily < 0) throw new DeskError("dailySpendCap must be a number of 0 or more.", 400);
+  return { allowedRecipients: uniq, maxPerAction: Math.round(max * 100) / 100, reviewLimit: Math.round(Math.min(review, max) * 100) / 100, dailySpendCap: Math.round(daily * 100) / 100 };
 }
 
 export function evaluate(amount: number, recipient: string, rules: Rules): { status: Status; checks: Check[] } {
@@ -103,7 +104,16 @@ export function evaluate(amount: number, recipient: string, rules: Rules): { sta
 }
 
 function snapshotPolicy(rules: Rules, checks: Check[]): PolicySnapshot {
-  return { rules: { ...rules, allowedRecipients: [...rules.allowedRecipients] }, checks: checks.map((check) => ({ ...check })) };
+  return { rules: { ...DEFAULT_RULES, ...rules, allowedRecipients: [...rules.allowedRecipients] }, checks: checks.map((check) => ({ ...check })) };
+}
+
+function dailyCommittedSpend(desk: Desk, now = new Date()) {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
+  return desk.proposals.reduce((sum, proposal) => {
+    const created = Date.parse(proposal.createdAt);
+    const active = proposal.status === "approved" || (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
+    return active && Number.isFinite(created) && created >= start ? sum + proposal.amount : sum;
+  }, 0);
 }
 
 function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
@@ -158,8 +168,13 @@ export async function propose(key: string | null, body: unknown) {
   if (!recipient) throw new DeskError("recipient (string) is required.", 400);
   if (b.amount === undefined || b.amount === null || Number.isNaN(amount)) throw new DeskError("amount (number) is required.", 400);
   return mutate(key, "any", (desk) => {
-    const { status, checks } = evaluate(amount, recipient, desk.rules);
-    const policySnapshot = snapshotPolicy(desk.rules, checks);
+    const { status: initialStatus, checks } = evaluate(amount, recipient, { ...DEFAULT_RULES, ...desk.rules });
+    const committed = dailyCommittedSpend(desk);
+    const dailyCap = desk.rules.dailySpendCap ?? DEFAULT_RULES.dailySpendCap;
+    const withinDaily = committed + amount <= dailyCap;
+    checks.push({ rule: "daily_spend_cap", passed: initialStatus === "blocked" || withinDaily, detail: initialStatus === "blocked" ? "Not reached: already blocked." : withinDaily ? `${committed} already committed + ${amount} proposed is within the daily cap of ${dailyCap}.` : `Daily spend cap of ${dailyCap} would be exceeded (${committed} already committed + ${amount} proposed).` });
+    const status: Status = initialStatus === "blocked" || !withinDaily ? "blocked" : initialStatus;
+    const policySnapshot = snapshotPolicy({ ...DEFAULT_RULES, ...desk.rules }, checks);
     const proposal: Proposal = { id: newId("prop"), createdAt: new Date().toISOString(), amount, recipient, reason, agent, status, checks, reasons: checks.filter((c) => !c.passed || (c.rule === "review_limit" && status === "needs_review")).map((c) => c.detail), policySnapshot, review: null, receiptIds: [] };
     if (status === "approved") proposal.reasons = ["Within every rule, so it is approved without a person."];
     const receipt = appendReceipt(desk, { proposalId: proposal.id, event: "decided_by_rails", outcome: status, amount, recipient, detail: proposal.reasons.join(" "), policySnapshot });
