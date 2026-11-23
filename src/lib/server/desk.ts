@@ -108,9 +108,10 @@ function snapshotPolicy(rules: Rules, checks: Check[]): PolicySnapshot {
   return { rules: { ...DEFAULT_RULES, ...rules, allowedRecipients: [...rules.allowedRecipients] }, checks: checks.map((check) => ({ ...check })) };
 }
 
-function dailyCommittedSpend(desk: Desk, now = new Date()) {
+function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: string) {
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
   return desk.proposals.reduce((sum, proposal) => {
+    if (proposal.id === excludeProposalId) return sum;
     const created = Date.parse(proposal.createdAt);
     const active = proposal.status === "approved" || (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
     return active && Number.isFinite(created) && created >= start ? sum + proposal.amount : sum;
@@ -202,9 +203,13 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     if (p.status !== "needs_review") throw new DeskError(`This proposal was ${p.status} by the rails; only proposals that need review can be decided.`, 409);
     if (p.review) throw new DeskError(`Already ${p.review.decision}.`, 409);
     // Re-check against the current rules: a payment blocked by today's rules cannot be approved.
-    const recheck = evaluate(p.amount, p.recipient, desk.rules);
-    if (decision === "approve" && recheck.status === "blocked") throw new DeskError("The current rules block this payment, so it cannot be approved.", 409);
-    const policySnapshot = snapshotPolicy(desk.rules, recheck.checks);
+    const recheck = evaluate(p.amount, p.recipient, { ...DEFAULT_RULES, ...desk.rules });
+    const committedWithoutProposal = dailyCommittedSpend(desk, new Date(), p.id);
+    const dailyCap = desk.rules.dailySpendCap ?? DEFAULT_RULES.dailySpendCap;
+    const withinDaily = committedWithoutProposal + p.amount <= dailyCap;
+    recheck.checks.push({ rule: "daily_spend_cap", passed: recheck.status === "blocked" || withinDaily, detail: recheck.status === "blocked" ? "Not reached: already blocked." : withinDaily ? `${committedWithoutProposal} already committed + ${p.amount} proposed is within the daily cap of ${dailyCap}.` : `Daily spend cap of ${dailyCap} would be exceeded (${committedWithoutProposal} already committed + ${p.amount} proposed).` });
+    if (decision === "approve" && (recheck.status === "blocked" || !withinDaily)) throw new DeskError("The current rules block this payment, so it cannot be approved.", 409);
+    const policySnapshot = snapshotPolicy({ ...DEFAULT_RULES, ...desk.rules }, recheck.checks);
     p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined, policySnapshot };
     const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review.", policySnapshot });
     p.receiptIds.push(r.id);
