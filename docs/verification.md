@@ -29,10 +29,20 @@ The test does not approve the proposal or execute a transfer. GitHub Actions run
 
 ## Production check completed 23 November 2026
 
-The live production alias https://rails-desk.vercel.app was tested while main was at commit 33686d8ab7717dcbd0457d13ad094f61a3f8584a. The smoke test returned storage=redis on two independent fresh reads. Both reads returned receipt rcpt_bc12bfac86e6e33052, the chain verified, and the proposal remained needs_review. No approval or funds movement occurred.
+The post-merge Production Redis smoke workflow passed on main commit 921b2b80d9f1c69856b8d2fd905ec2a0bd1e7b5f. It created a synthetic 15-credit Jordan proposal and verified two independent fresh reads:
 
-The post-merge workflow will repeat this check against the deployment containing the HttpOnly owner-session change.
+- Storage: redis
+- Receipt: rcpt_f300d5ef74312016da
+- Both reads returned the same receipt ID and a valid hash chain.
+- Proposal status remained needs_review.
+- The owner-session release was live before the test ran. The test used the HttpOnly owner cookie and confirmed that desk creation returned an agent key, not an owner key.
 
+No approval or funds movement occurred. See [the successful Production Redis workflow](https://github.com/Bamioishim/rails-desk/actions/runs/45184739958).
+
+## Current-main Kane gate
+
+The fresh Kane gate was triggered by the push of main commit 921b2b80d9f1c69856b8d2fd905ec2a0bd1e7b5f. Its npm test step passed; the browser gate is still running. Check [the exact-main Kane workflow](https://github.com/Bamioishim/rails-desk/actions/runs/45184740068) for its final report and artifact.
+ 
 ## Historical Kane evidence
 
 The previous fail → fix → pass sequence and the 5/5 run from 20 November 2026 are preserved under docs/kane-evidence/. Those historical results document earlier commits only. They do not claim that the current main commit has passed; use the latest GitHub Actions run and its kane-report artifact for that.
