@@ -46,7 +46,10 @@ export function useDesk(pollMs = 0) {
           if (live) setKeys(migrated);
           if (live) await refresh(migrated);
         } catch (e) {
-          if (live) setError(e instanceof Error ? e.message : "Could not secure the existing owner session.");
+          if (live) {
+            setKeys({ deskId: stored.deskId, agentKey: stored.agentKey });
+            setError(e instanceof Error ? e.message : "Could not secure the existing owner session.");
+          }
         }
       } else {
         const current = { deskId: stored.deskId, agentKey: stored.agentKey };
@@ -70,7 +73,10 @@ export function useDesk(pollMs = 0) {
   const rotate = async () => { if (!keys) return; const r = await api<{ agentKey: string }>("/api/v1/desk/agent-key", { method: "POST" }); const k = { ...keys, agentKey: r.agentKey }; localStorage.setItem(STORAGE_KEY, JSON.stringify(k)); setKeys(k); await refresh(k); };
   const recordDemoEvent = async (body: { amount: number; recipient: string; outcome: "approved" | "needs_review" | "blocked" | "refused"; detail: string; demoId?: string }) => { if (!keys) throw new Error("Create a desk before recording demo activity."); const receipt = await api<DeskReceipt>("/api/v1/demo/events", { method: "POST", body: JSON.stringify(body) }); await refresh(); return receipt; };
   const submitProposal = async (body: { amount: number; recipient: string; reason: string }) => { if (!keys) return null; const r = await api<{ status: string; reasons: string[]; receipt_id: string }>("/api/v1/proposals", { method: "POST", key: keys.agentKey, body: JSON.stringify({ ...body, agent: "Open App" }) }); await refresh(); return r; };
-  const forget = () => { void api("/api/v1/session", { method: "DELETE" }).catch(() => undefined); localStorage.removeItem(STORAGE_KEY); setKeys(null); setDesk(null); };
+  const forget = async () => {
+    try { await api("/api/v1/session", { method: "DELETE" }); }
+    finally { localStorage.removeItem(STORAGE_KEY); setKeys(null); setDesk(null); }
+  };
 
   return { ready, keys, desk, error, refresh, create, saveRules, decide, rotate, submitProposal, recordDemoEvent, forget };
 }
