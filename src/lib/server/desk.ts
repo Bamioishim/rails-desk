@@ -264,7 +264,8 @@ export async function recordTestnetSettlement(key: string | null, id: string, in
   if (anchor !== "0x" + expectedAnchor) throw new DeskError("The supplied anchor does not match this approved proposal and recipient.", 400);
 
   const { verifyXLayerTestnetTransfer } = await import("./xlayer-settlement");
-  const verified = await verifyXLayerTestnetTransfer({ txHash: txHash as `0x${string}`, payTo: payTo as `0x${string}`, amountCredits: proposal.amount, anchor: anchor as `0x${string}` });
+  const approvedAt = proposal.review?.decision === "approved" ? proposal.review.at : proposal.createdAt;
+  const verified = await verifyXLayerTestnetTransfer({ txHash: txHash as `0x${string}`, payTo: payTo as `0x${string}`, amountCredits: proposal.amount, approvedAt, anchor: anchor as `0x${string}` });
 
   return mutate(key, "owner", (current) => {
     const p = current.proposals.find((x) => x.id === id);
