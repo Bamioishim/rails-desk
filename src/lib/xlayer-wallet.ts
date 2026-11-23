@@ -145,7 +145,7 @@ export async function sendReceiptHeadAnchor({ headHash }: { headHash: Hex }) {
   const hash = await wallet.sendTransaction({
     account: from,
     to: from,
-    value: 0n,
+    value: BigInt(0),
     data: concatHex([ANCHOR_TAG, headHash]),
     chain: xLayerTestnet,
   });
