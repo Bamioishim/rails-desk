@@ -9,10 +9,11 @@ export type Proposal = {
   id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string;
   status: Status; checks: Check[]; reasons: string[]; policySnapshot?: PolicySnapshot;
   review: null | { decision: "approved" | "refused"; at: string; note?: string; policySnapshot?: PolicySnapshot };
+  settlement?: { chainId: 1952; txHash: string; from: string; payTo: string; asset: "test OKB"; units: string; blockNumber: string; anchor: string; verifiedAt: string };
   receiptIds: string[];
 };
 export type DeskReceipt = {
-  index: number; id: string; at: string; proposalId: string; event: "decided_by_rails" | "approved_by_owner" | "refused_by_owner" | "demo_activity";
+  index: number; id: string; at: string; proposalId: string; event: "decided_by_rails" | "approved_by_owner" | "refused_by_owner" | "settled_on_xlayer_testnet" | "demo_activity";
   source?: "app" | "demo";
   outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string;
   /** Immutable rules and checks used for this event. Older receipts may not have a snapshot. */
@@ -132,7 +133,7 @@ export function publicDesk(desk: Desk) {
 }
 export function publicProposal(p: Proposal) {
   const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
-  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, created_at: p.createdAt };
+  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, settlement: p.settlement ?? null, created_at: p.createdAt };
 }
 
 export async function createDesk(name?: string) {
@@ -207,6 +208,44 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined, policySnapshot };
     const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review.", policySnapshot });
     p.receiptIds.push(r.id);
+    return publicProposal(p);
+  });
+}
+
+
+export async function recordTestnetSettlement(key: string | null, id: string, input: unknown) {
+  const body = (input ?? {}) as Record<string, unknown>;
+  const txHash = typeof body.txHash === "string" ? body.txHash : "";
+  const payTo = typeof body.payTo === "string" ? body.payTo.toLowerCase() : "";
+  const anchor = typeof body.anchor === "string" ? body.anchor.toLowerCase() : "";
+  if (!/^0x[0-9a-f]{64}$/.test(txHash) || !/^0x[0-9a-f]{40}$/.test(payTo) || !/^0x[0-9a-f]{64}$/.test(anchor)) {
+    throw new DeskError("A valid X Layer testnet transaction hash, recipient address and receipt anchor are required.", 400);
+  }
+  const { desk } = await authed(key, "owner");
+  const proposal = desk.proposals.find((p) => p.id === id);
+  if (!proposal) throw new DeskError("Proposal not found.", 404);
+  const approved = proposal.status === "approved" || (proposal.status === "needs_review" && proposal.review?.decision === "approved");
+  if (!approved) throw new DeskError("Only an approved proposal can be settled.", 409);
+  if (proposal.settlement) throw new DeskError("This proposal already has a verified settlement.", 409);
+  const originalReceipt = desk.receipts.find((r) => r.id === proposal.receiptIds[0]);
+  if (!originalReceipt) throw new DeskError("The proposal's original receipt is missing.", 409);
+  const expectedPayload = { proposalId: proposal.id, receiptHash: originalReceipt.hash, payTo, amount: proposal.amount };
+  const expectedAnchor = sha(JSON.stringify(expectedPayload));
+  if (anchor !== "0x" + expectedAnchor) throw new DeskError("The supplied anchor does not match this approved proposal and recipient.", 400);
+
+  const { verifyXLayerTestnetTransfer } = await import("./xlayer-settlement");
+  const verified = await verifyXLayerTestnetTransfer({ txHash: txHash as `0x${string}`, payTo: payTo as `0x${string}`, amountCredits: proposal.amount, anchor: anchor as `0x${string}` });
+
+  return mutate(key, "owner", (current) => {
+    const p = current.proposals.find((x) => x.id === id);
+    if (!p) throw new DeskError("Proposal not found.", 404);
+    const stillApproved = p.status === "approved" || (p.status === "needs_review" && p.review?.decision === "approved");
+    if (!stillApproved) throw new DeskError("The proposal is no longer approved.", 409);
+    if (p.settlement) throw new DeskError("This proposal already has a verified settlement.", 409);
+    if (current.proposals.some((other) => other.id !== id && other.settlement?.txHash.toLowerCase() === txHash)) throw new DeskError("This transaction is already attached to another proposal.", 409);
+    p.settlement = { ...verified, txHash, anchor, verifiedAt: new Date().toISOString() };
+    const receipt = appendReceipt(current, { proposalId: p.id, event: "settled_on_xlayer_testnet", outcome: "approved", amount: p.amount, recipient: p.recipient, detail: `Settled on X Layer testnet. Transaction: ${txHash}`, policySnapshot: p.review?.policySnapshot ?? p.policySnapshot });
+    p.receiptIds.push(receipt.id);
     return publicProposal(p);
   });
 }
