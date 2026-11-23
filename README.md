@@ -50,7 +50,11 @@ POST /api/v1/proposals ──► Policy evaluator
                               ▼
                     SHA-256 receipt chain
                               │
-                       Owner review UI\n                              │\n                 Optional owner-signed testnet transfer\n                              │\n                  Server verifies mined transaction
+                       Owner review UI
+                              │
+                 Optional owner-signed testnet transfer
+                              │
+                  Server verifies mined transaction
 ~~~
 
 - **Next.js App Router** serves the web app and JSON API.
@@ -71,7 +75,9 @@ Amounts are credits in the demo. Agent calls use Authorization: Bearer <agent-ke
 | POST | /api/v1/desk/agent-key | owner cookie | Rotate the agent key |
 | POST | /api/v1/proposals | agent key | Submit a proposal |
 | GET | /api/v1/proposals/:id | agent key | Read proposal status |
-| POST | /api/v1/proposals/:id/decision | owner cookie | Approve or refuse a pending proposal |\n| POST | /api/v1/proposals/:id/settlement | owner cookie | Verify and record a mined X Layer testnet transfer for an approved proposal |\n| POST | /api/v1/desk/anchors | owner cookie | Verify and record an X Layer testnet receipt-head anchor |
+| POST | /api/v1/proposals/:id/decision | owner cookie | Approve or refuse a pending proposal |
+| POST | /api/v1/proposals/:id/settlement | owner cookie | Verify and record a mined X Layer testnet transfer for an approved proposal |
+| POST | /api/v1/desk/anchors | owner cookie | Verify and record an X Layer testnet receipt-head anchor |
 | POST | /api/v1/demo/events | owner cookie | Append a clearly labelled simulated demo event |
 
 The app's session endpoint at /api/v1/session is used for one-time migration of existing browser sessions and logout. Trusted server-side integrations may still use an owner bearer key where explicitly configured.
