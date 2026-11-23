@@ -95,7 +95,7 @@ Download [rails-desk-mcp.mjs](https://rails-desk.vercel.app/rails-desk-mcp.mjs) 
 
 - No blockchain transaction or real-money transfer is executed.
 - An owner approval is a recorded decision only.
-- Redis persistence is verified by the production smoke test; see the verification notes for the latest checked deployment and evidence.
+- The production smoke test checks Redis persistence against the live deployment; see the verification notes and latest GitHub Actions result.
 - The receipt chain is hash-linked and server-verified. For stronger independent auditability, its head must be periodically anchored outside the application.
 - Phone approvals and external on-chain settlement are not implemented.
 
