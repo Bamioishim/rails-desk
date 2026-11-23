@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it } from "vitest";
 let child: ChildProcessWithoutNullStreams | undefined;
 let lines: Interface | undefined;
 let server: Server | undefined;
-let buffer = "";
 
 function rpc(id: number, method: string, params: unknown = {}) {
   if (!child || !lines) throw new Error("MCP process is not running.");
@@ -30,7 +29,7 @@ afterEach(async () => {
   child?.kill();
   lines?.close();
   if (server?.listening) await new Promise<void>((resolve) => server!.close(() => resolve()));
-  child = undefined; lines = undefined; server = undefined; buffer = "";
+  child = undefined; lines = undefined; server = undefined;
 });
 
 describe("Rails Desk MCP stdio integration", () => {
