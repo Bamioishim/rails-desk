@@ -1,0 +1,38 @@
+import { concatHex, createPublicClient, formatEther, http, isAddress, parseEther, type Hex } from "viem";
+import { xLayerTestnet } from "../chains";
+
+const ANCHOR_TAG = "0x52444b31" as const;
+const client = createPublicClient({
+  chain: xLayerTestnet,
+  transport: http(process.env.XLAYER_TESTNET_RPC_URL || process.env.NEXT_PUBLIC_XLAYER_TESTNET_RPC_URL || xLayerTestnet.rpcUrls.default.http[0]),
+});
+
+export async function verifyXLayerTestnetTransfer(input: {
+  txHash: Hex;
+  payTo: `0x${string}`;
+  amountCredits: number;
+  anchor: Hex;
+}) {
+  if (!isAddress(input.payTo)) throw new Error("Recipient must be a valid EVM address.");
+  const [tx, receipt] = await Promise.all([
+    client.getTransaction({ hash: input.txHash }),
+    client.getTransactionReceipt({ hash: input.txHash }),
+  ]);
+  if (receipt.status !== "success") throw new Error("The X Layer testnet transaction did not succeed.");
+  if (tx.chainId !== xLayerTestnet.id) throw new Error("Transaction is not on X Layer testnet.");
+  if (!tx.to || tx.to.toLowerCase() !== input.payTo.toLowerCase()) throw new Error("Transaction recipient does not match the approved recipient address.");
+  const rate = Number(process.env.NEXT_PUBLIC_DEMO_OKB_PER_USD ?? "0.0001");
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error("The testnet OKB conversion rate is not configured correctly.");
+  const expectedValue = parseEther((input.amountCredits * rate).toFixed(8));
+  if (tx.value !== expectedValue) throw new Error("Transaction value does not match the approved proposal amount.");
+  const expectedData = concatHex([ANCHOR_TAG, input.anchor]);
+  if (tx.input.toLowerCase() !== expectedData.toLowerCase()) throw new Error("Transaction calldata does not contain the expected receipt anchor.");
+  return {
+    chainId: 1952 as const,
+    from: tx.from.toLowerCase(),
+    payTo: input.payTo.toLowerCase(),
+    asset: "test OKB" as const,
+    units: formatEther(tx.value),
+    blockNumber: receipt.blockNumber.toString(),
+  };
+}
