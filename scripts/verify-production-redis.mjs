@@ -1,4 +1,4 @@
-const base = (process.env.RAILS_DESK_URL || "https://rails-desk.vercel.app").replace(/\\/$/, "");
+const base = (process.env.RAILS_DESK_URL || "https://rails-desk.vercel.app").replace(/\/$/, "");
 async function request(path, init = {}) {
   const response = await fetch(base + path, { ...init, cache: "no-store", headers: { "content-type": "application/json", ...(init.headers || {}) } });
   const body = await response.json().catch(() => ({}));
