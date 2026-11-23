@@ -8,9 +8,11 @@ let lines: Interface | undefined;
 let server: Server | undefined;
 
 function rpc(id: number, method: string, params: unknown = {}) {
-  if (!child || !lines) throw new Error("MCP process is not running.");
+  const process = child;
+  const reader = lines;
+  if (!process || !reader) throw new Error("MCP process is not running.");
   return new Promise<Record<string, unknown>>((resolve, reject) => {
-    const timeout = setTimeout(() => { lines?.off("line", onLine); reject(new Error(`MCP request ${id} timed out`)); }, 3000);
+    const timeout = setTimeout(() => { reader.off("line", onLine); reject(new Error(`MCP request ${id} timed out`)); }, 3000);
     const onLine = (line: string) => {
       try {
         const message = JSON.parse(line) as Record<string, unknown>;
@@ -20,8 +22,8 @@ function rpc(id: number, method: string, params: unknown = {}) {
         resolve(message);
       } catch { /* ignore non-JSON output */ }
     };
-    lines.on("line", onLine);
-    child!.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
+    reader.on("line", onLine);
+    process.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
   });
 }
 
