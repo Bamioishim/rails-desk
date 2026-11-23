@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeUpstash } from "./fake-upstash";
+import { NextRequest } from "next/server";
+import { proxy } from "../../proxy";
 import { allowedOrigins, corsHeaders, limit, ok, options } from "../server/http";
 import { hit, resetMemoryLimiter } from "../server/rate-limit";
 
@@ -101,21 +103,21 @@ describe("rate limiter (Redis)", () => {
 });
 
 describe("security headers", () => {
-  it("sends a CSP without unsafe-eval in production, plus anti-framing and nosniff", async () => {
-    const env = process.env as Record<string, string | undefined>;
-    const prev = env.NODE_ENV; env.NODE_ENV = "production"; vi.resetModules();
+  it("sends a nonce-based script CSP without unsafe-inline or unsafe-eval", () => {
+    vi.stubEnv("NODE_ENV", "production");
     try {
-      const cfg = (await import("../../../next.config")).default;
-      const [{ source, headers }] = await cfg.headers!();
-      expect(source).toBe("/:path*");
-      const h = Object.fromEntries(headers.map((x) => [x.key, x.value]));
-      expect(h["Content-Security-Policy"]).toMatch(/frame-ancestors 'none'/);
-      expect(h["Content-Security-Policy"]).toMatch(/object-src 'none'/);
-      expect(h["Content-Security-Policy"]).not.toMatch(/unsafe-eval/);
-      expect(h["Content-Security-Policy"]).toMatch(/connect-src 'self'/);
-      expect(h["X-Content-Type-Options"]).toBe("nosniff");
-      expect(h["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
-      expect(h["X-Frame-Options"]).toBe("DENY");
-    } finally { env.NODE_ENV = prev; }
+      const response = proxy(new NextRequest("https://rails-desk.test/"));
+      const csp = response.headers.get("Content-Security-Policy") ?? "";
+      const scriptSrc = csp.split(";").find((part) => part.trim().startsWith("script-src")) ?? "";
+      expect(scriptSrc).toMatch(/'nonce-[^']+'/);
+      expect(scriptSrc).toMatch(/'strict-dynamic'/);
+      expect(scriptSrc).not.toMatch(/unsafe-inline|unsafe-eval/);
+      expect(csp).toMatch(/frame-ancestors 'none'/);
+      expect(csp).toMatch(/object-src 'none'/);
+      expect(csp).toMatch(/connect-src 'self'/);
+      expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+      expect(response.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+      expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    } finally { vi.unstubAllEnvs(); }
   });
 });
