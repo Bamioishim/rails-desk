@@ -17,13 +17,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Wait for production app
+      - name: Wait for the HttpOnly-session release to reach production
         run: |
-          for i in $(seq 1 30); do
-            if curl -fsS https://rails-desk.vercel.app/ >/dev/null; then exit 0; fi
-            sleep 10
+          for i in $(seq 1 60); do
+            status=$(curl -s -o /dev/null -w "%{http_code}" https://rails-desk.vercel.app/api/v1/session || true)
+            if [ "$status" = "200" ]; then exit 0; fi
+            sleep 5
           done
-          echo "Production did not become reachable." >&2
+          echo "The new session endpoint did not reach production." >&2
           exit 1
       - name: Verify real production Redis persistence
         run: npm run verify:production
