@@ -1,0 +1,29 @@
+name: Production Redis smoke test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-redis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Wait for production app
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS https://rails-desk.vercel.app/ >/dev/null; then exit 0; fi
+            sleep 10
+          done
+          echo "Production did not become reachable." >&2
+          exit 1
+      - name: Verify real production Redis persistence
+        run: npm run verify:production
