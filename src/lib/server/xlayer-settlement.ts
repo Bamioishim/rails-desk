@@ -36,3 +36,18 @@ export async function verifyXLayerTestnetTransfer(input: {
     blockNumber: receipt.blockNumber.toString(),
   };
 }
+
+/** Verify a zero-value self-transaction that permanently commits a receipt-head hash in calldata. */
+export async function verifyXLayerReceiptHeadAnchor(input: { txHash: Hex; anchor: Hex }) {
+  const [tx, receipt] = await Promise.all([
+    client.getTransaction({ hash: input.txHash }),
+    client.getTransactionReceipt({ hash: input.txHash }),
+  ]);
+  if (receipt.status !== "success") throw new Error("The X Layer receipt-anchor transaction did not succeed.");
+  if (tx.chainId !== xLayerTestnet.id) throw new Error("Receipt anchor is not on X Layer testnet.");
+  if (!tx.to || tx.to.toLowerCase() !== tx.from.toLowerCase()) throw new Error("Receipt anchor must be a self-transaction.");
+  if (tx.value !== 0n) throw new Error("Receipt anchor must not transfer value.");
+  const expectedData = concatHex([ANCHOR_TAG, input.anchor]);
+  if (tx.input.toLowerCase() !== expectedData.toLowerCase()) throw new Error("Transaction calldata does not contain the expected receipt-head hash.");
+  return { chainId: 1952 as const, txHash: input.txHash, from: tx.from.toLowerCase(), blockNumber: receipt.blockNumber.toString(), anchoredAt: new Date().toISOString() };
+}
