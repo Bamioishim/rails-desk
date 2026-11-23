@@ -223,13 +223,13 @@ export async function recordReceiptHeadAnchor(key: string | null, input: unknown
     throw new DeskError("A valid transaction hash, receipt hash and receipt index are required.", 400);
   }
   const { desk } = await authed(key, "owner");
-  const head = desk.receipts.at(-1);
-  if (!head || head.index !== receiptIndex || head.hash !== receiptHash) throw new DeskError("Only the current receipt-chain head can be anchored.", 409);
+  const head = desk.receipts.find((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
+  if (!head) throw new DeskError("The supplied receipt head is not part of this desk's current chain.", 409);
   const { verifyXLayerReceiptHeadAnchor } = await import("./xlayer-settlement");
   const verified = await verifyXLayerReceiptHeadAnchor({ txHash: txHash as `0x${string}`, anchor: ("0x" + receiptHash) as `0x${string}` });
   return mutate(key, "owner", (current) => {
-    const currentHead = current.receipts.at(-1);
-    if (!currentHead || currentHead.index !== receiptIndex || currentHead.hash !== receiptHash) throw new DeskError("The receipt chain changed while the anchor was being verified. Refresh and try again.", 409);
+    const stillInChain = current.receipts.some((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
+    if (!stillInChain) throw new DeskError("The receipt chain changed while the anchor was being verified. Refresh and try again.", 409);
     current.anchors ??= [];
     if (current.anchors.some((item) => item.txHash.toLowerCase() === txHash)) throw new DeskError("This anchor transaction has already been recorded.", 409);
     current.anchors.push({ receiptIndex, receiptHash, ...verified });
