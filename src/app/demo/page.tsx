@@ -55,13 +55,14 @@ export default function GuidedDemoPage(){
  useEffect(()=>{const el=logRef.current;if(el)el.scrollTop=el.scrollHeight;},[log]);
 
  const say=(who:LogLine["who"],text:string)=>setLog(l=>[...l.slice(-60),{t:clock(),who,text}]);
- const addReceipt=(r:Omit<DemoReceipt,"id"|"hash">)=>{
+ const addReceipt=(r:Omit<DemoReceipt,"id"|"hash"|"persistent">)=>{
   const outcome=r.decision==="Blocked"?"blocked":r.decision==="Refused"?"refused":"approved";
   void d.recordDemoEvent({recipient:r.recipient,amount:r.amount,outcome,detail:r.reason,demoId:"guided-walkthrough"}).then(saved=>{
-   setReceipts(list=>[...list,{...r,id:saved.id,hash:saved.hash}]);
+   setReceipts(list=>[...list,{...r,id:saved.id,hash:saved.hash,persistent:true}]);
    say("demo",`persistent demo receipt recorded: ${r.recipient} · ${r.amount} credits · ${r.decision}`);
   }).catch(error=>say("demo",`receipt could not be saved: ${error instanceof Error?error.message:String(error)}`));
  };
+ const addLocalReceipt=(r:Omit<DemoReceipt,"id"|"hash"|"persistent">)=>{ const id=`local_${crypto.randomUUID()}`; setReceipts(list=>[...list,{...r,id,hash:"local-only",persistent:false}]); };
  const setStep=(i:number,patch:Partial<StepState>)=>setSteps(s=>s.map((x,j)=>j===i?{...x,...patch}:x));
  const counts={total:receipts.length,approved:receipts.filter(r=>r.decision==="Executed (mock)").length,review:receipts.filter(r=>/needed your OK/i.test(r.reason)).length,blocked:receipts.filter(r=>r.decision==="Blocked").length};
 
@@ -149,8 +150,8 @@ export default function GuidedDemoPage(){
   setStage("review");setNote(`Needs your OK: above the ${REVIEW_LIMIT}-credit review limit. The proposal is waiting for your explicit approval. No transfer has occurred.`);say("referee","decision: NEEDS YOUR OK");
  };
  const approve=()=>{setStage("approved");say("you","Approve");setNote("Approved in the walkthrough. This still does not execute anything.");};
- const execute=()=>{addReceipt({recipient,amount:Number(amount),decision:"Executed (mock)",reason:"Manually completed in the isolated demo."});say("executor",`mock transfer: ${amount} credits → ${recipient}`);setStage("complete");setNote("Demo outcome saved to your receipt chain. No funds moved.");};
- const refuse=()=>{setStage("refused");say("you","Refuse");addReceipt({recipient,amount:Number(amount),decision:"Refused",reason:"Manually refused in the isolated demo."});setNote("Refusal shown in the walkthrough only. Nothing was sent.");};
+ const execute=()=>{addLocalReceipt({recipient,amount:Number(amount),decision:"Executed (mock)",reason:"Manually completed in the isolated demo."});say("executor",`mock transfer: ${amount} credits → ${recipient}`);setStage("complete");setNote("Mock execution completed locally. No funds moved and no persistent receipt was written.");};
+ const refuse=()=>{setStage("refused");say("you","Refuse");addLocalReceipt({recipient,amount:Number(amount),decision:"Refused",reason:"Manually refused in the isolated demo."});setNote("Refusal shown locally only. No persistent receipt was written and nothing was sent.");};
 
  const ruleText: Record<RuleKey,string> = {
   cap: Number(amount)>0&&Number(amount)<=CAP? `Amount is within the ${CAP}-credit maximum.`:`Amount must be positive and no more than ${CAP} credits.`,
