@@ -13,6 +13,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: rails-desk-kane-gate
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
