@@ -39,10 +39,17 @@ The post-merge Production Redis smoke workflow passed on main commit 921b2b80d9f
 
 No approval or funds movement occurred. See [the successful Production Redis workflow](https://github.com/Bamioishim/rails-desk/actions/runs/45184739958).
 
-## Current-main Kane gate
+## Current-main Kane gate: passed 23 November 2026
 
-The fresh Kane gate was triggered by the push of main commit 921b2b80d9f1c69856b8d2fd905ec2a0bd1e7b5f. Its npm test step passed; the browser gate is still running. Check [the exact-main Kane workflow](https://github.com/Bamioishim/rails-desk/actions/runs/45184740068) for its final report and artifact.
- 
+The post-merge Kane gate passed against main commit af2862d260b8c56d0350c0005ad700ae83f40b9d.
+
+- Unit tests: 49 passed across 9 test files.
+- Browser tests: 5/5 passed.
+- The five browser scenarios cover landing navigation, the complete guided walkthrough, approval and mock execution, blocked-recipient wording, and the app agent-review flow.
+- The Kane report was uploaded as the `kane-report` workflow artifact.
+
+See [the successful current-main Kane workflow](https://github.com/Bamioishim/rails-desk/actions/runs/45185353719) and its [Kane report artifact](https://github.com/Bamioishim/rails-desk/actions/runs/45185353719/artifacts/14824306952).
+
 ## Historical Kane evidence
 
-The previous fail → fix → pass sequence and the 5/5 run from 20 November 2026 are preserved under docs/kane-evidence/. Those historical results document earlier commits only. They do not claim that the current main commit has passed; use the latest GitHub Actions run and its kane-report artifact for that.
+The previous fail → fix → pass sequence and the 5/5 run from 20 November 2026 are preserved under docs/kane-evidence/. Those historical results document earlier commits only. The current-main result above is the release evidence for commit af2862d260b8c56d0350c0005ad700ae83f40b9d.
