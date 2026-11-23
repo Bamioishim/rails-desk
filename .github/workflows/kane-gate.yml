@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: rails-desk-kane-gate
-  cancel-in-progress: true
+  group: rails-desk-kane-gate-${{ github.sha }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
