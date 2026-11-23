@@ -22,7 +22,7 @@ export async function verifyXLayerTestnetTransfer(input: {
   if (receipt.status !== "success") throw new Error("The X Layer testnet transaction did not succeed.");
   const minedBlock = await client.getBlock({ blockNumber: receipt.blockNumber });
   const approvedAt = Date.parse(input.approvedAt);
-  if (!Number.isFinite(approvedAt) || Number(minedBlock.timestamp) * 1000 < approvedAt) {
+  if (!Number.isFinite(approvedAt) || Number(minedBlock.timestamp) * 1000 + 999 < approvedAt) {
     throw new Error("The testnet transfer must be mined after the proposal was approved.");
   }
   if (tx.chainId !== xLayerTestnet.id) throw new Error("Transaction is not on X Layer testnet.");
