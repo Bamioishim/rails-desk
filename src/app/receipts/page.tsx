@@ -113,10 +113,12 @@ export default function ReceiptsPage() {
       {(() => {
         const latest = desk.anchors?.at(-1);
         const latestIndex = latest?.receiptIndex ?? 0;
+        const currentHead = desk.receipts.at(-1);
+        const alreadyAnchored = !!latest && !!currentHead && latest.receiptIndex === currentHead.index && latest.receiptHash === currentHead.hash;
         const due = desk.receipts.length > 0 && desk.receipts.length - latestIndex >= 25;
         return <><div className="receipt-meta">{latest ? `Latest anchor covers receipt #${latest.receiptIndex} · ${latest.receiptHash.slice(0, 18)}…` : "No receipt head has been anchored yet."} {due ? "· Another anchor is due." : "· Recommended interval: every 25 receipts."}</div>
           {latest && <div className="receipt-meta">Transaction <a href={`https://web3.okx.com/explorer/x-layer-testnet/tx/${latest.txHash}`} target="_blank" rel="noreferrer">{latest.txHash.slice(0, 18)}… ↗</a> · Block {latest.blockNumber}</div>}
-          <button className="button button-small" style={{ marginTop: 10 }} onClick={() => void anchorHead()} disabled={anchoring || !desk.receipts.length}>{anchoring ? "Waiting for wallet / confirmation…" : "Anchor latest receipt head"}</button>
+          <button className="button button-small" style={{ marginTop: 10 }} onClick={() => void anchorHead()} disabled={anchoring || !desk.receipts.length || alreadyAnchored}>{anchoring ? "Waiting for wallet / confirmation…" : alreadyAnchored ? "Latest head already anchored" : "Anchor latest receipt head"}</button>
         </>;
       })()}
     </div>
