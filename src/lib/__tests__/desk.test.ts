@@ -62,7 +62,7 @@ describe("desk API flow", () => {
 
   it("enforces a daily spend cap and reserves budget for pending reviews", async () => {
     const { ownerKey, agentKey } = await createDesk("Daily cap");
-    await updateRules(ownerKey, { allowedRecipients: ["Alex", "Jordan"], maxPerAction: 100, reviewLimit: 20, dailySpendCap: 25 });
+    await updateRules(ownerKey, { allowedRecipients: ["Alex", "Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
     const first = await propose(agentKey, { amount: 8, recipient: "Alex", reason: "First payment" });
     expect(first.status).toBe("approved");
     const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Needs review" });
