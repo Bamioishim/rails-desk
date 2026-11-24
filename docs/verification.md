@@ -29,11 +29,13 @@ The project owner manually exercised all five Kane browser scenarios against the
 
 This is a **manual 5/5 acceptance result**, reported by the project owner. It is not represented as a successful automated Kane run.
 
-## Automated Kane run and credit limitation
+## Latest post-merge automated Kane run and credit limitation
 
-GitHub Actions run [#92](https://github.com/Bamioishim/rails-desk/actions/runs/45202364063) completed with 4/5 browser scenarios passing. The landing/demo-entry scenario did not complete because the Kane service returned `insufficient credits`. That is a test-service quota failure, not a recorded application assertion failure.
+GitHub Actions run [#96](https://github.com/Bamioishim/rails-desk/actions/runs/45302945102) ran against main commit `7f287f811182720c541db762ae39933ffca502e7` after PR #8 merged. The five browser scenarios all stopped at the same Kane service response: `Credits exhausted: {"error":"insufficient credits"}`. The report records 0/5 because none of the scenarios could complete; it contains no app-specific failed assertion or expected-versus-actual UI mismatch.
 
-The automated result remains 4/5. The manual acceptance above separately records the project owner's successful 5/5 walkthrough. No additional Kane run should be triggered until the service credit balance is replenished.
+The same run completed `npm ci`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` successfully before the Kane step. The service-credit failure remains an automated gate failure, not an automated application acceptance result.
+
+The project owner separately reported manual acceptance of all five scenarios. That owner-reported manual 5/5 result is recorded above and is not represented as an automated Kane pass. Do not trigger another paid Kane run until credits are available. The earlier [run #92](https://github.com/Bamioishim/rails-desk/actions/runs/45202364063), which completed 4/5, is historical and is superseded by run #96 for the post-merge main commit.
 
 ## Production Redis smoke test
 
@@ -46,7 +48,21 @@ The automated result remains 4/5. The manual acceptance above separately records
 
 The test does not approve the proposal or execute a transfer. GitHub Actions runs this check after pushes to main and can also run it manually. It leaves one clearly labelled synthetic pending proposal in an isolated desk for each run.
 
-## Production check completed 23 November 2026
+## Production check completed 24 November 2026
+
+The post-merge Production Redis smoke workflow [run #9](https://github.com/Bamioishim/rails-desk/actions/runs/45302945066) passed against production after PR #8 merged to main commit `7f287f811182720c541db762ae39933ffca502e7`. The live deployment is [rails-desk.vercel.app](https://rails-desk.vercel.app), served by [this READY Vercel production deployment](https://vercel.com/bamioishim/rails-desk/8ND6HzpRKZZy6qndu2cGP7VxjyyW).
+
+The smoke test created a separate synthetic desk and a pending Jordan proposal for 15 credits, then verified two fresh reads:
+
+- Storage: redis
+- Receipt: `rcpt_55ad57ace4d927f7be`
+- Both reads returned the same receipt ID and a valid hash chain.
+- Proposal status remained `needs_review`.
+- No approval or funds movement occurred.
+
+The live landing page, `/demo`, `/rails`, and `/receipts` routes each returned HTTP 200 and their expected page headings. This confirms the production pages are serving; it is not a full interactive browser acceptance run.
+
+## Historical production check completed 23 November 2026
 
 The post-merge Production Redis smoke workflow passed on main commit 921b2b80d9f1c69856b8d2fd905ec2a0bd1e7b5f. It created a synthetic 15-credit Jordan proposal and verified two independent fresh reads:
 
