@@ -6,7 +6,7 @@ export type DeskPolicySnapshot = { rules: DeskRules; checks: { rule: string; pas
 export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked"; reasons: string[]; policy_snapshot?: DeskPolicySnapshot | null; review: null | { decision: "approved" | "refused"; at: string; policySnapshot?: DeskPolicySnapshot }; settlement?: { chainId: number; txHash: string; from: string; payTo: string; asset: string; units: string; blockNumber: string; anchor: string; verifiedAt: string } | null; receiptIds: string[] };
 export type DeskReceipt = { index: number; id: string; at: string; proposalId: string; event: string; source?: "app" | "demo"; outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string; policySnapshot?: DeskPolicySnapshot; previousHash: string; hash: string };
 export type DeskAnchor = { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: number; blockNumber: string; anchoredAt: string };
-export type DeskState = { id: string; name: string; rules: DeskRules; proposals: DeskProposal[]; receipts: DeskReceipt[]; anchors: DeskAnchor[]; storage: "redis" | "file" | "ephemeral"; pending: number; agentKeyHint: string; verification: { valid: boolean; brokenAt: number | null } };
+export type DeskState = { id: string; name: string; rules: DeskRules; proposals: DeskProposal[]; receipts: DeskReceipt[]; demoReceipts?: DeskReceipt[]; demoVerification?: { valid: boolean; brokenAt: number | null }; anchors: DeskAnchor[]; storage: "redis" | "file" | "ephemeral"; pending: number; agentKeyHint: string; verification: { valid: boolean; brokenAt: number | null } };
 type Keys = { deskId: string; agentKey: string; ownerKey?: string };
 
 const STORAGE_KEY = "rails-desk-keys-v1";
@@ -40,13 +40,25 @@ export function useDesk(pollMs = 0) {
       if (!stored) { if (live) setReady(true); return; }
       // One-time migration: exchange the legacy localStorage owner key for an HttpOnly cookie.
       if (stored.ownerKey) {
+        let cookieEstablished = false;
         try {
           await api("/api/v1/session", { method: "POST", body: JSON.stringify({ ownerKey: stored.ownerKey }) });
+          cookieEstablished = true;
           const migrated = { deskId: stored.deskId, agentKey: stored.agentKey };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          } catch (storageError) {
+            // The cookie is already set. Never leave the legacy owner secret behind if
+            // rewriting the record fails; the agent key can remain in memory this session.
+            try { localStorage.removeItem(STORAGE_KEY); } catch { /* storage may be unavailable */ }
+            throw storageError;
+          }
           if (live) setKeys(migrated);
           if (live) await refresh(migrated);
         } catch (e) {
+          if (cookieEstablished) {
+            try { localStorage.removeItem(STORAGE_KEY); } catch { /* storage may be unavailable */ }
+          }
           if (live) {
             setKeys({ deskId: stored.deskId, agentKey: stored.agentKey });
             setError(e instanceof Error ? e.message : "Could not secure the existing owner session.");
@@ -74,6 +86,7 @@ export function useDesk(pollMs = 0) {
   const recordSettlement = async (id: string, body: { txHash: string; payTo: string; anchor: string }) => { if (!keys) throw new Error("Owner session is unavailable."); const result = await api<DeskProposal>(`/api/v1/proposals/${id}/settlement`, { method: "POST", body: JSON.stringify(body) }); await refresh(); return result; };
   const recordAnchor = async (body: { txHash: string; receiptHash: string; receiptIndex: number }) => { if (!keys) throw new Error("Owner session is unavailable."); const result = await api<DeskAnchor>("/api/v1/desk/anchors", { method: "POST", body: JSON.stringify(body) }); await refresh(); return result; };
   const rotate = async () => { if (!keys) return; const r = await api<{ agentKey: string }>("/api/v1/desk/agent-key", { method: "POST" }); const k = { ...keys, agentKey: r.agentKey }; localStorage.setItem(STORAGE_KEY, JSON.stringify(k)); setKeys(k); await refresh(k); };
+  const rotateOwnerSession = async () => { if (!keys) return; await api<{ rotated: boolean }>("/api/v1/session/rotate", { method: "POST" }); };
   const recordDemoEvent = async (body: { amount: number; recipient: string; outcome: "approved" | "needs_review" | "blocked" | "refused"; detail: string; demoId?: string }) => { if (!keys) throw new Error("Create a desk before recording demo activity."); const receipt = await api<DeskReceipt>("/api/v1/demo/events", { method: "POST", body: JSON.stringify(body) }); await refresh(); return receipt; };
   const submitProposal = async (body: { amount: number; recipient: string; reason: string }) => { if (!keys) return null; const r = await api<{ status: string; reasons: string[]; receipt_id: string }>("/api/v1/proposals", { method: "POST", key: keys.agentKey, body: JSON.stringify({ ...body, agent: "Open App" }) }); await refresh(); return r; };
   const forget = async () => {
@@ -81,7 +94,7 @@ export function useDesk(pollMs = 0) {
     finally { localStorage.removeItem(STORAGE_KEY); setKeys(null); setDesk(null); }
   };
 
-  return { ready, keys, desk, error, refresh, create, saveRules, decide, recordSettlement, recordAnchor, rotate, submitProposal, recordDemoEvent, forget };
+  return { ready, keys, desk, error, refresh, create, saveRules, decide, recordSettlement, recordAnchor, rotate, rotateOwnerSession, submitProposal, recordDemoEvent, forget };
 }
 
 export const storageNote: Record<DeskState["storage"], string> = {

@@ -4,7 +4,9 @@
 
 The browser-facing owner credential is stored in the rails_desk_owner cookie with HttpOnly, SameSite=Strict, Path=/, a 30-day expiry, and Secure in production. Client-side JavaScript cannot read it. Owner-only browser actions use same-origin requests and the cookie; the agent key remains separately available to copy into an MCP client or other agent.
 
-Existing browsers with the former rails-desk-keys-v1 localStorage record are migrated once: the client exchanges the legacy owner key with POST /api/v1/session, then rewrites localStorage with only the desk ID and agent key. The server validates the key before setting the cookie. Logging out clears the cookie and removes the local browser record.
+Existing browsers with the former rails-desk-keys-v1 localStorage record are migrated once: the client exchanges the legacy owner key with POST /api/v1/session, then rewrites localStorage with only the desk ID and agent key. The server validates the key before setting the cookie. Once the cookie has been established, the client removes the legacy record even if rewriting the reduced record fails. Logging out clears the cookie and removes the local browser record.
+
+POST /api/v1/session/rotate lets an authenticated owner rotate the owner credential. The server replaces the stored key hash and sets a new HttpOnly cookie in the same response; the previous owner key is immediately invalidated. This is a browser-session rotation endpoint, so trusted integrations using a separately stored owner bearer key must update that credential as well.
 
 Trusted server-side integrations can continue to send an owner bearer key explicitly. Never expose that key to an agent.
 
@@ -18,6 +20,7 @@ style-src unsafe-inline remains because the current UI uses React inline style a
 
 - Owner-only routes authenticate against the HttpOnly cookie (or an explicitly supplied server-side owner bearer credential).
 - Agent credentials can propose and read status, but cannot edit policy or make owner decisions.
+- The daily spend control uses a rolling 24-hour window. Pending proposals reserve budget from creation and keep that reservation until the owner approves or refuses them, even if review takes longer than 24 hours. Once approved, a reviewed proposal counts from its approval timestamp. Refused proposals release their reservation. Proposal-history trimming preserves every pending reservation and every approved spend record still inside the rolling window, so high proposal volume cannot erase cap accounting.
 - The database stores SHA-256 hashes of owner and agent keys, not their plaintext values.
 - Mutations use a per-desk lock and revision compare-and-set when Redis is enabled.
 - Rate limits apply to write routes. CORS is allowlist-based, never wildcard.

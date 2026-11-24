@@ -13,9 +13,9 @@ npm run build
 npm run kane:gate
 ~~~
 
-The Kane gate builds a local production build, starts it, and runs the five browser tests in tests/kane/. It exits non-zero if any test fails. It requires Kane CLI 0.10.6 and LT_USERNAME / LT_ACCESS_KEY credentials.
+The Kane gate builds a local production build, starts it, and runs the five browser tests in tests/kane/. It exits non-zero if any test fails. It requires Kane CLI 0.10.6 and LT_USERNAME / LT_ACCESS_KEY credentials. Because Kane is paid, the GitHub workflow is manual-dispatch only; PR pushes and merges do not start it automatically.
 
-GitHub Actions runs the Kane gate for pull requests and pushes to main. A post-merge run is the evidence for the exact main commit; PR-branch runs are not a substitute.
+GitHub Actions exposes the Kane gate through an explicit workflow dispatch. A run must be deliberately started against the intended commit; there is no automatic paid run on PR updates or main pushes.
 
 ## Manual browser acceptance: 5/5 passed on 24 November 2026
 
@@ -29,13 +29,31 @@ The project owner manually exercised all five Kane browser scenarios against the
 
 This is a **manual 5/5 acceptance result**, reported by the project owner. It is not represented as a successful automated Kane run.
 
-## Latest post-merge automated Kane run and credit limitation
+## Latest inspected automated Kane attempt and credit limitation
 
-GitHub Actions run [#96](https://github.com/Bamioishim/rails-desk/actions/runs/45302945102) ran against main commit `7f287f811182720c541db762ae39933ffca502e7` after PR #8 merged. The five browser scenarios all stopped at the same Kane service response: `Credits exhausted: {"error":"insufficient credits"}`. The report records 0/5 because none of the scenarios could complete; it contains no app-specific failed assertion or expected-versus-actual UI mismatch.
+GitHub Actions run [#97](https://github.com/Bamioishim/rails-desk/actions/runs/45303831180) ran against commit `16bbcf7`. Its attached `KANE_REPORT.md` records **0/5** because all five browser scenarios stopped at the same Kane service response: `Credits exhausted: {"error":"insufficient credits"}`. No scenario reached its application assertions, so this report does not establish that five app flows are broken.
 
-The same run completed `npm ci`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` successfully before the Kane step. The service-credit failure remains an automated gate failure, not an automated application acceptance result.
+The report is an automated gate failure caused by unavailable Kane service credits. It is distinct from the project owner's separately reported manual 5/5 acceptance result above. Do not trigger another paid Kane run until credits are available. Earlier run [#96](https://github.com/Bamioishim/rails-desk/actions/runs/45302945102) is historical and is not the latest inspected Kane attempt.
 
-The project owner separately reported manual acceptance of all five scenarios. That owner-reported manual 5/5 result is recorded above and is not represented as an automated Kane pass. Do not trigger another paid Kane run until credits are available. The earlier [run #92](https://github.com/Bamioishim/rails-desk/actions/runs/45202364063), which completed 4/5, is historical and is superseded by run #96 for the post-merge main commit.
+The current main branch has advanced beyond the commit tested by run #97. Therefore that report is not automated acceptance evidence for the current main HEAD or for the unmerged security branch.
+
+## Security branch verification: 24 November 2026
+
+The rolling-cap and owner-session branch is `fix/rolling-daily-cap-owner-security`. Its free-check workflow [run #6](https://github.com/Bamioishim/rails-desk/actions/runs/45382366399) passed unit tests, TypeScript, ESLint, production build, and both npm audit steps against source commit `e155d3f`. The workflow then recorded its evidence and pushed a generated lockfile/docs commit (`8166060`).
+
+The PR Kane run [#100](https://github.com/Bamioishim/rails-desk/actions/runs/45382374664) completed the app build and started all five browser scenarios, but every scenario stopped at the same Kane service error: `Credits exhausted: {"error":"insufficient credits"}`. No app assertion was reached. A subsequent PR run [#101](https://github.com/Bamioishim/rails-desk/actions/runs/45382491077) was marked `action_required` before a job started. Neither is a successful automated browser acceptance result. Do not spend credits or rerun Kane as part of this change.
+
+The branch now also exposes owner-session rotation in the `/rails` UI. The owner rotates the credential through the existing same-origin endpoint; the new credential remains inside the HttpOnly cookie and is never displayed or copied into agent configuration. The spend-cap controls describe the actual rolling 24-hour behavior.
+
+The latest free-check run [#20](https://github.com/Bamioishim/rails-desk/actions/runs/45474117600) passed on commit `eb5f4e1`: unit tests, TypeScript, ESLint, production build, full npm audit, and production-only npm audit. Both audit reports recorded zero vulnerabilities. Its evidence is uploaded as the `free-security-checks` artifact; the workflow no longer commits generated files back to the branch.
+
+## CI workflow hardening and isolated demo ledger
+
+The free-check workflow no longer writes generated lockfiles or check reports back to the source branch. It uploads the security report as a workflow artifact, uses read-only repository permissions, and serializes checks per branch with superseded runs cancelled. This avoids the previous concurrent Git push race.
+
+The paid Kane workflow is manual-dispatch only. PR pushes and main pushes no longer launch paid browser runs. The last two automatically launched attempts before this change, runs [#102](https://github.com/Bamioishim/rails-desk/actions/runs/45471685073) and [#103](https://github.com/Bamioishim/rails-desk/actions/runs/45471823680), built the app successfully but returned `Credits exhausted: {\"error\":\"insufficient credits\"}` for all five browser scenarios. Their reports did not reach app assertions. This shows the credentials configured in those runs still had no available Kane credits; it does not establish application test failures.
+
+New walkthrough events are stored in a dedicated `demoReceipts` hash chain with independent verification. The live activity feed combines and labels both streams, while the decision-history table and its export keep app decisions separate. Existing historical demo entries remain in the original chain for integrity and are displayed as demo history rather than silently rewritten.
 
 ## Production Redis smoke test
 
@@ -77,3 +95,14 @@ No approval or funds movement occurred. See [the successful Production Redis wor
 ## Historical Kane evidence
 
 Earlier automated 5/5 results are historical and apply only to the commits named in their original reports. They are not substituted for the current branch's manual acceptance result or current automated status.
+
+
+## Rolling spend-cap and owner-key hardening
+
+The `fix/rolling-daily-cap-owner-security` branch adds regression coverage for:
+- a proposal created before midnight and approved after midnight;
+- spending across UTC midnight under a rolling 24-hour cap;
+- a pending proposal retaining its reservation beyond 24 hours until the owner decides;
+- owner-key rotation invalidating the previous credential.
+
+It also adds the owner session rotation endpoint and removes the legacy owner key from browser storage after the HttpOnly cookie has been established. The free checks workflow is enabled for this branch. These changes remain unmerged until automated checks and review complete.

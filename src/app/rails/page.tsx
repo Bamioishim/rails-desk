@@ -38,6 +38,8 @@ export default function RailsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [origin, setOrigin] = useState("https://rails-desk.vercel.app");
   const [loaded, setLoaded] = useState(false);
+  const [ownerRotating, setOwnerRotating] = useState(false);
+  const [ownerRotationNotice, setOwnerRotationNotice] = useState<string | null>(null);
 
   useEffect(() => { const t = setTimeout(() => setOrigin(window.location.origin), 0); return () => clearTimeout(t); }, []);
   useEffect(() => { if (d.ready && !d.keys) void d.create().catch((e) => setErr(String(e.message || e))); }, [d.ready, d.keys]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -58,6 +60,16 @@ export default function RailsPage() {
       setSaved(true);
     } catch (x) { setErr(x instanceof Error ? x.message : String(x)); }
   }
+  async function rotateOwnerSession() {
+    if (!window.confirm("Rotate the owner credential for this desk? This browser session will be replaced, and the previous owner credential will stop working.")) return;
+    setOwnerRotating(true); setOwnerRotationNotice(null); setErr(null);
+    try {
+      await d.rotateOwnerSession();
+      setOwnerRotationNotice("Owner session rotated. This browser now uses the new secure session; the previous owner credential is invalidated.");
+    } catch (x) { setErr(x instanceof Error ? x.message : String(x)); }
+    finally { setOwnerRotating(false); }
+  }
+
   async function submitProposal(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true); setTest(null);
@@ -93,14 +105,15 @@ export default function RailsPage() {
     <div className="layout-grid"><form className="panel" onSubmit={save}><div className="section-head"><div><h2 className="panel-title">Transfer policy</h2><div className="panel-desc">Changes apply to new proposals and are checked again at approval time.</div></div></div>
       <div className="field"><label htmlFor="cap">Maximum per action</label><input id="cap" type="number" min="0" step="0.01" value={cap} onChange={(e) => { setCap(e.target.value); setSaved(false); }} required /><span className="hint">Any proposal above this amount is blocked.</span></div>
       <div className="field"><label htmlFor="review">Review limit</label><input id="review" type="number" min="0" step="0.01" value={review} onChange={(e) => { setReview(e.target.value); setSaved(false); }} required /><span className="hint">Allowed proposals above this amount need your OK on the Receipts page. At or below it they are approved automatically.</span></div>
-      <div className="field"><label htmlFor="daily-cap">Daily spend cap (credits, UTC day)</label><input id="daily-cap" type="number" min="0" step="0.01" value={dailyCap} onChange={(e) => { setDailyCap(e.target.value); setSaved(false); }} required /><span className="hint">Approved and awaiting-review proposals reserve today’s budget. Refused and blocked proposals do not count. The day resets at 00:00 UTC.</span></div>
+      <div className="field"><label htmlFor="daily-cap">Rolling 24-hour spend cap (credits)</label><input id="daily-cap" type="number" min="0" step="0.01" value={dailyCap} onChange={(e) => { setDailyCap(e.target.value); setSaved(false); }} required /><span className="hint">Approved proposals count from approval time. Pending proposals reserve budget from creation until you approve or refuse them. Refused and blocked proposals do not count.</span></div>
       <div className="field"><label htmlFor="recipients">Allowed recipients</label><textarea id="recipients" value={names} onChange={(e) => { setNames(e.target.value); setSaved(false); }} placeholder={"Alex\nJordan\nSam"} style={{ minHeight: 120 }} /><span className="hint">One recipient per line or comma-separated. Matching ignores letter case and surrounding spaces.</span></div>
       
       <button className="button primary" type="submit" disabled={!d.desk}>Save policy changes</button>{saved && <span role="status" aria-live="polite" style={{ marginLeft: 12, color: "var(--green)", fontSize: 12 }}>✓ Rails saved</span>}</form>
-      <aside className="panel"><h2 className="panel-title">How the referee applies policy</h2><div className="step"><div className="step-num">1</div><div><strong>Validate the amount</strong><p>Block zero, negative, invalid or over-maximum amounts.</p></div></div><div className="step"><div className="step-num">2</div><div><strong>Check the recipient</strong><p>Require an exact case-insensitive match in your allowlist.</p></div></div><div className="step"><div className="step-num">3</div><div><strong>Reserve the daily budget</strong><p>Approved and awaiting-review proposals count toward the UTC-day spend cap.</p></div></div><div className="step"><div className="step-num">4</div><div><strong>Apply the review limit</strong><p>Above it, the proposal waits for your Approve or Refuse.</p></div></div><div className="step"><div className="step-num">5</div><div><strong>Record the decision</strong><p>Append the proposal and outcome to the receipt hash chain.</p></div></div></aside></div>
+      <aside className="panel"><h2 className="panel-title">How the referee applies policy</h2><div className="step"><div className="step-num">1</div><div><strong>Validate the amount</strong><p>Block zero, negative, invalid or over-maximum amounts.</p></div></div><div className="step"><div className="step-num">2</div><div><strong>Check the recipient</strong><p>Require an exact case-insensitive match in your allowlist.</p></div></div><div className="step"><div className="step-num">3</div><div><strong>Reserve the rolling 24-hour budget</strong><p>Approved proposals count from approval time; pending proposals reserve budget from creation until you decide.</p></div></div><div className="step"><div className="step-num">4</div><div><strong>Apply the review limit</strong><p>Above it, the proposal waits for your Approve or Refuse.</p></div></div><div className="step"><div className="step-num">5</div><div><strong>Record the decision</strong><p>Append the proposal and outcome to the receipt hash chain.</p></div></div></aside></div>
 
     <div className="panel" style={{ marginTop: 15 }} id="connect">
       <div className="section-head"><div><h2 className="panel-title">Connect your agent</h2><div className="panel-desc">Give your agent this key. It can propose payments and read their status; only you can change rules or approve.</div></div><span className="tag">AGENT API</span></div>
+      <div className="field"><label>Owner session</label><div className="action-row"><span className="hint" style={{ flex: 1 }}>Your owner credential stays in a secure HttpOnly cookie and is never shown or copied into the agent key field.</span><button type="button" className="button ghost button-small" onClick={() => void rotateOwnerSession()} disabled={!d.desk || ownerRotating}>{ownerRotating ? "Rotating…" : "Rotate owner session"}</button></div>{ownerRotationNotice && <div className="notice" role="status" style={{ marginTop: 8 }}>{ownerRotationNotice}</div>}<span className="hint">Rotation replaces this browser session and immediately invalidates the previous owner credential. Any separately configured server-side owner bearer credential must be updated separately.</span></div>
       <div className="field"><label htmlFor="agent-key">Agent API key</label><div className="action-row"><input id="agent-key" readOnly value={agentKey} className="mono" style={{ flex: 1, minWidth: 0 }} /><Copy text={agentKey} name="agent key" /><button type="button" className="button ghost button-small" onClick={() => void d.rotate()} disabled={!d.desk}>Rotate key</button></div><span className="hint">Rotating issues a new key; the old one stops working.</span></div>
       <div className="section-head" style={{ marginTop: 14 }}><div><strong style={{ fontSize: 12 }}>Propose a payment with curl</strong><div className="panel-desc">The answer is approved, needs_review or blocked, with reasons and a receipt id.</div></div><Copy text={curl} name="curl command" /></div>
       <pre className="hash" style={code}>{curl}</pre>

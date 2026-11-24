@@ -1,5 +1,5 @@
-# Active copy of ci/kane-gate.yml. Runs on pull requests and on demand (Actions → Kane gate → Run workflow).
-# Runs on pull requests and main so the merged commit receives its own fresh gate result.
+# Active workflow. Kane is paid, so runs only when explicitly dispatched from Actions.
+# PR pushes and merges do not trigger paid browser runs automatically.
 name: Kane gate
 
 # Runs the Kane CLI browser tests against a fresh build of this PR and fails the check
@@ -8,18 +8,14 @@ name: Kane gate
 # Missing secrets fail the job. A skipped run is not a passing gate.
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: rails-desk-kane-gate-${{ github.sha }}
-  cancel-in-progress: false
+  group: rails-desk-kane-gate
+  cancel-in-progress: true
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   kane-gate:
@@ -30,26 +26,6 @@ jobs:
       LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - name: Cancel superseded Kane gate runs
-        if: github.ref == 'refs/heads/main'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data } = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "kane-gate.yml",
-              per_page: 100,
-            });
-            for (const run of data.workflow_runs) {
-              if (run.id === context.runId || run.status !== "in_progress") continue;
-              await github.rest.actions.cancelWorkflowRun({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: run.id,
-              });
-              core.info(`Cancelled superseded Kane run ${run.id} on ${run.head_branch}`);
-            }
       - uses: actions/setup-node@v4
         with:
           node-version: 20

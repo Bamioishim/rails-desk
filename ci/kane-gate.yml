@@ -2,16 +2,16 @@
 # then add repository secrets LT_USERNAME and LT_ACCESS_KEY.
 name: Kane gate
 
-# Runs the Kane CLI browser tests against a fresh build of this PR and fails the check
-# (blocking merge/deploy when branch protection requires it) if any Kane flow fails.
+# Kane is a paid browser-testing service. Run only by an explicit workflow dispatch.
 # Needs repository secrets LT_USERNAME and LT_ACCESS_KEY (Settings → Secrets and variables → Actions).
 # Without them the job skips with a notice instead of failing.
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: rails-desk-kane-gate
+  cancel-in-progress: true
 
 permissions:
   contents: read

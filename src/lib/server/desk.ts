@@ -23,7 +23,7 @@ export type DeskReceipt = {
 type Desk = {
   version: 1; id: string; name: string; createdAt: string;
   ownerKeyHash: string; agentKeyHash: string; agentKeyHint: string;
-  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; anchors?: { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: 1952; blockNumber: string; anchoredAt: string }[];
+  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; demoReceipts?: DeskReceipt[]; anchors?: { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: 1952; blockNumber: string; anchoredAt: string }[];
 };
 
 export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10, dailySpendCap: 100 };
@@ -109,13 +109,55 @@ function snapshotPolicy(rules: Rules, checks: Check[]): PolicySnapshot {
 }
 
 function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: string) {
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
+  const windowStart = now.getTime() - 24 * 60 * 60 * 1000;
   return desk.proposals.reduce((sum, proposal) => {
     if (proposal.id === excludeProposalId) return sum;
-    const created = Date.parse(proposal.createdAt);
-    const active = proposal.status === "approved" || (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
-    return active && Number.isFinite(created) && created >= start ? sum + proposal.amount : sum;
+    const active = proposal.status === "approved" ||
+      (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
+    if (!active) return sum;
+    // Pending proposals reserve budget from creation; reviewed approvals count from approval time.
+    const committedAt = Date.parse(
+      proposal.status === "needs_review" && proposal.review?.decision === "approved"
+        ? proposal.review.at
+        : proposal.createdAt,
+    );
+    // Pending proposals keep their reservation until approved or refused, even if
+    // the review itself takes longer than 24 hours.
+    const stillPending = proposal.status === "needs_review" && !proposal.review;
+    return stillPending || (Number.isFinite(committedAt) && committedAt > windowStart && committedAt <= now.getTime())
+      ? sum + proposal.amount
+      : sum;
   }, 0);
+}
+
+function trimProposals(proposals: Proposal[], now = Date.now()) {
+  const windowStart = now - 24 * 60 * 60 * 1000;
+  const retained = proposals.filter((proposal) => {
+    const pending = proposal.status === "needs_review" && !proposal.review;
+    if (pending) return true;
+    const active = proposal.status === "approved" ||
+      (proposal.status === "needs_review" && proposal.review?.decision === "approved");
+    if (!active) return false;
+    const committedAt = Date.parse(
+      proposal.status === "needs_review" && proposal.review?.decision === "approved"
+        ? proposal.review.at
+        : proposal.createdAt,
+    );
+    return Number.isFinite(committedAt) && committedAt > windowStart && committedAt <= now;
+  });
+  const retainedIds = new Set(retained.map((proposal) => proposal.id));
+  const history = proposals.filter((proposal) => !retainedIds.has(proposal.id)).slice(-MAX_PROPOSALS);
+  return [...history, ...retained].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+}
+
+function appendDemoReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
+  const chain = desk.demoReceipts ?? (desk.demoReceipts = []);
+  const previousHash = chain.at(-1)?.hash ?? GENESIS;
+  const base = { index: (chain.at(-1)?.index ?? 0) + 1, id: newId("demo"), at: new Date().toISOString(), ...r, source: "demo" as const, previousHash };
+  const receipt: DeskReceipt = { ...base, hash: sha(JSON.stringify(base)) };
+  chain.push(receipt);
+  if (chain.length > MAX_PROPOSALS * 2) desk.demoReceipts = chain.slice(-MAX_PROPOSALS * 2);
+  return receipt;
 }
 
 function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
@@ -130,7 +172,7 @@ function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | 
 export function publicDesk(desk: Desk) {
   const { ownerKeyHash: _o, agentKeyHash: _a, ...rest } = desk;
   void _o; void _a;
-  return { ...rest, anchors: desk.anchors ?? [], storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
+  return { ...rest, demoReceipts: desk.demoReceipts ?? [], demoVerification: verifyDeskChain(desk.demoReceipts ?? []), anchors: desk.anchors ?? [], storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
 }
 export function publicProposal(p: Proposal) {
   const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
@@ -141,7 +183,7 @@ export async function createDesk(name?: string) {
   const id = randomBytes(8).toString("hex");
   const ownerKey = `rd_owner_${id}_${token()}`;
   const agentKey = `rd_agent_${id}_${token()}`;
-  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [], anchors: [] };
+  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [], demoReceipts: [], anchors: [] };
   await saveRaw(id, JSON.stringify(desk));
   return { desk: publicDesk(desk), ownerKey, agentKey };
 }
@@ -157,6 +199,14 @@ export async function rotateAgentKey(key: string | null) {
     const agentKey = `rd_agent_${desk.id}_${token()}`;
     desk.agentKeyHash = sha(agentKey); desk.agentKeyHint = agentKey.slice(-4);
     return { agentKey };
+  });
+}
+
+export async function rotateOwnerKey(key: string | null) {
+  return mutate(key, "owner", (desk) => {
+    const ownerKey = `rd_owner_${desk.id}_${token()}`;
+    desk.ownerKeyHash = sha(ownerKey);
+    return { ownerKey };
   });
 }
 
@@ -182,7 +232,8 @@ export async function propose(key: string | null, body: unknown) {
     const receipt = appendReceipt(desk, { proposalId: proposal.id, event: "decided_by_rails", outcome: status, amount, recipient, detail: proposal.reasons.join(" "), policySnapshot });
     proposal.receiptIds.push(receipt.id);
     desk.proposals.push(proposal);
-    if (desk.proposals.length > MAX_PROPOSALS) desk.proposals = desk.proposals.slice(-MAX_PROPOSALS);
+    // Never trim an active reservation or spend record inside the cap window.
+    desk.proposals = trimProposals(desk.proposals);
     return publicProposal(proposal);
   });
 }
@@ -291,14 +342,13 @@ export async function recordDemoEvent(key: string | null, input: unknown) {
   if (!recipient || !Number.isFinite(amount) || !["approved", "needs_review", "blocked", "refused"].includes(String(outcome)) || !detail) {
     throw new DeskError("A valid demo recipient, amount, outcome and detail are required.", 400);
   }
-  return mutate(key, "owner", (desk) => appendReceipt(desk, {
+  return mutate(key, "owner", (desk) => appendDemoReceipt(desk, {
     proposalId: typeof body.demoId === "string" ? body.demoId.slice(0, 80) : "demo",
     event: "demo_activity",
     outcome: outcome as DeskReceipt["outcome"],
     amount,
     recipient,
     detail,
-    source: "demo",
   }));
 }
 

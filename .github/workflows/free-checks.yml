@@ -2,13 +2,17 @@ name: Free checks (no Kane)
 
 on:
   push:
-    branches: [testnet-settlement-rpc-fix]
+    branches: [testnet-settlement-rpc-fix, fix/rolling-daily-cap-owner-security]
     paths-ignore:
       - ".github/workflows/free-checks.yml"
   workflow_dispatch:
 
+concurrency:
+  group: rails-desk-free-checks-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   checks:
@@ -39,7 +43,7 @@ jobs:
         run: npm run lint
       - name: Production build
         run: npm run build
-      - name: Record check evidence and commit generated lockfile
+      - name: Record check evidence
         env:
           SOURCE_SHA: ${{ github.sha }}
         run: |
@@ -73,13 +77,12 @@ jobs:
             'The paid Kane browser suite was not invoked.',
             '',
           ];
-          fs.mkdirSync('docs', { recursive: true });
-          fs.writeFileSync('docs/security-checks.md', lines.join('\n'));
+          fs.mkdirSync('artifacts', { recursive: true });
+          fs.writeFileSync('artifacts/security-checks.md', lines.join('\n'));
           NODE
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json docs/security-checks.md
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: record free security checks and refreshed lockfile"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+      - name: Upload free-check evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: free-security-checks
+          path: artifacts/security-checks.md
+          if-no-files-found: error
