@@ -86,6 +86,7 @@ export function useDesk(pollMs = 0) {
   const recordSettlement = async (id: string, body: { txHash: string; payTo: string; anchor: string }) => { if (!keys) throw new Error("Owner session is unavailable."); const result = await api<DeskProposal>(`/api/v1/proposals/${id}/settlement`, { method: "POST", body: JSON.stringify(body) }); await refresh(); return result; };
   const recordAnchor = async (body: { txHash: string; receiptHash: string; receiptIndex: number }) => { if (!keys) throw new Error("Owner session is unavailable."); const result = await api<DeskAnchor>("/api/v1/desk/anchors", { method: "POST", body: JSON.stringify(body) }); await refresh(); return result; };
   const rotate = async () => { if (!keys) return; const r = await api<{ agentKey: string }>("/api/v1/desk/agent-key", { method: "POST" }); const k = { ...keys, agentKey: r.agentKey }; localStorage.setItem(STORAGE_KEY, JSON.stringify(k)); setKeys(k); await refresh(k); };
+  const rotateOwnerSession = async () => { if (!keys) return; await api<{ rotated: boolean }>("/api/v1/session/rotate", { method: "POST" }); };
   const recordDemoEvent = async (body: { amount: number; recipient: string; outcome: "approved" | "needs_review" | "blocked" | "refused"; detail: string; demoId?: string }) => { if (!keys) throw new Error("Create a desk before recording demo activity."); const receipt = await api<DeskReceipt>("/api/v1/demo/events", { method: "POST", body: JSON.stringify(body) }); await refresh(); return receipt; };
   const submitProposal = async (body: { amount: number; recipient: string; reason: string }) => { if (!keys) return null; const r = await api<{ status: string; reasons: string[]; receipt_id: string }>("/api/v1/proposals", { method: "POST", key: keys.agentKey, body: JSON.stringify({ ...body, agent: "Open App" }) }); await refresh(); return r; };
   const forget = async () => {
@@ -93,7 +94,7 @@ export function useDesk(pollMs = 0) {
     finally { localStorage.removeItem(STORAGE_KEY); setKeys(null); setDesk(null); }
   };
 
-  return { ready, keys, desk, error, refresh, create, saveRules, decide, recordSettlement, recordAnchor, rotate, submitProposal, recordDemoEvent, forget };
+  return { ready, keys, desk, error, refresh, create, saveRules, decide, recordSettlement, recordAnchor, rotate, rotateOwnerSession, submitProposal, recordDemoEvent, forget };
 }
 
 export const storageNote: Record<DeskState["storage"], string> = {
