@@ -6,8 +6,10 @@ Rails Desk is a safety layer for AI agents that propose payments. It checks each
 
 ## Verification status
 
-- **Manual browser acceptance: 5/5 passed** on 24 November 2026, covering landing/demo entry, the full walkthrough, owner approval and testnet settlement, blocked-recipient handling, and agent review.
-- **Latest recorded automated Kane run: 4/5.** Its remaining browser scenario stopped when the Kane service returned `insufficient credits`; it did not produce an application assertion failure. See [verification details](docs/verification.md).
+- **Manual browser acceptance: 5/5 passed**, independently reported by the project owner on 24 November 2026. See [the manual acceptance record](docs/verification.md).
+- **Latest post-merge automated Kane run: 0/5.** All five scenarios stopped at the same `insufficient credits` service error before producing application assertions. This is not evidence that five app flows are broken. The automated gate remains red; see [run #96](https://github.com/Bamioishim/rails-desk/actions/runs/45302945102) and the [full verification record](docs/verification.md).
+- The post-merge unit tests, typecheck, lint, and production build passed. The [production Redis smoke test](https://github.com/Bamioishim/rails-desk/actions/runs/45302945066) also passed.
+- Production is live at [rails-desk.vercel.app](https://rails-desk.vercel.app), deployed from merge commit `7f287f811182720c541db762ae39933ffca502e7`.
 - Do not rerun the paid Kane browser suite until its credits are replenished.
 
 ## Quickstart
