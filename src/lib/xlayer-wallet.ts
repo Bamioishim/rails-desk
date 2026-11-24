@@ -35,7 +35,7 @@ async function getOkxConnectUi(): Promise<OkxConnectUi> {
       await OKXUniversalConnectUI.init({
         DAppMetaData: {
           name: "Rails Desk",
-          icon: "https://rails-desk.vercel.app/icon.png",
+          icon: "https://rails-desk.vercel.app/rails-desk-mark.svg",
         },
         actionsConfiguration: { modals: "before" },
         language: "en_US",
