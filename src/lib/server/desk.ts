@@ -23,7 +23,7 @@ export type DeskReceipt = {
 type Desk = {
   version: 1; id: string; name: string; createdAt: string;
   ownerKeyHash: string; agentKeyHash: string; agentKeyHint: string;
-  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; anchors?: { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: 1952; blockNumber: string; anchoredAt: string }[];
+  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; demoReceipts?: DeskReceipt[]; anchors?: { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: 1952; blockNumber: string; anchoredAt: string }[];
 };
 
 export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10, dailySpendCap: 100 };
@@ -150,6 +150,16 @@ function trimProposals(proposals: Proposal[], now = Date.now()) {
   return [...history, ...retained].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 }
 
+function appendDemoReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
+  const chain = desk.demoReceipts ?? (desk.demoReceipts = []);
+  const previousHash = chain.at(-1)?.hash ?? GENESIS;
+  const base = { index: (chain.at(-1)?.index ?? 0) + 1, id: newId("demo"), at: new Date().toISOString(), ...r, source: "demo" as const, previousHash };
+  const receipt: DeskReceipt = { ...base, hash: sha(JSON.stringify(base)) };
+  chain.push(receipt);
+  if (chain.length > MAX_PROPOSALS * 2) desk.demoReceipts = chain.slice(-MAX_PROPOSALS * 2);
+  return receipt;
+}
+
 function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
   const previousHash = desk.receipts.at(-1)?.hash ?? GENESIS;
   const base = { index: (desk.receipts.at(-1)?.index ?? 0) + 1, id: newId("rcpt"), at: new Date().toISOString(), ...r, previousHash };
@@ -162,7 +172,7 @@ function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | 
 export function publicDesk(desk: Desk) {
   const { ownerKeyHash: _o, agentKeyHash: _a, ...rest } = desk;
   void _o; void _a;
-  return { ...rest, anchors: desk.anchors ?? [], storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
+  return { ...rest, demoReceipts: desk.demoReceipts ?? [], demoVerification: verifyDeskChain(desk.demoReceipts ?? []), anchors: desk.anchors ?? [], storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
 }
 export function publicProposal(p: Proposal) {
   const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
@@ -173,7 +183,7 @@ export async function createDesk(name?: string) {
   const id = randomBytes(8).toString("hex");
   const ownerKey = `rd_owner_${id}_${token()}`;
   const agentKey = `rd_agent_${id}_${token()}`;
-  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [], anchors: [] };
+  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [], demoReceipts: [], anchors: [] };
   await saveRaw(id, JSON.stringify(desk));
   return { desk: publicDesk(desk), ownerKey, agentKey };
 }
@@ -332,14 +342,13 @@ export async function recordDemoEvent(key: string | null, input: unknown) {
   if (!recipient || !Number.isFinite(amount) || !["approved", "needs_review", "blocked", "refused"].includes(String(outcome)) || !detail) {
     throw new DeskError("A valid demo recipient, amount, outcome and detail are required.", 400);
   }
-  return mutate(key, "owner", (desk) => appendReceipt(desk, {
+  return mutate(key, "owner", (desk) => appendDemoReceipt(desk, {
     proposalId: typeof body.demoId === "string" ? body.demoId.slice(0, 80) : "demo",
     event: "demo_activity",
     outcome: outcome as DeskReceipt["outcome"],
     amount,
     recipient,
     detail,
-    source: "demo",
   }));
 }
 
