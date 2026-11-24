@@ -3,25 +3,83 @@ name: Free checks (no Kane)
 on:
   push:
     branches: [testnet-settlement-rpc-fix]
+    paths-ignore:
+      - ".github/workflows/free-checks.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   checks:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: testnet-settlement-rpc-fix
+          ref: ${{ github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run build
+      - name: Regenerate lockfile from the updated manifest
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Install exact locked dependencies
+        run: npm ci
+      - name: Full dependency audit
+        run: npm audit --json > /tmp/npm-audit-full.json || true
+      - name: Production dependency audit
+        run: npm audit --omit=dev --json > /tmp/npm-audit-production.json || true
+      - name: Run unit tests
+        run: npm test
+      - name: TypeScript check
+        run: npm run typecheck
+      - name: ESLint
+        run: npm run lint
+      - name: Production build
+        run: npm run build
+      - name: Record check evidence and commit generated lockfile
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const full = JSON.parse(fs.readFileSync('/tmp/npm-audit-full.json', 'utf8'));
+          const prod = JSON.parse(fs.readFileSync('/tmp/npm-audit-production.json', 'utf8'));
+          const counts = (a) => a.metadata?.vulnerabilities ?? { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 };
+          const findings = Object.entries(full.vulnerabilities ?? {}).map(([name, v]) =>
+            `- \`${name}\`: ${v.severity}; installed range ${v.range}; direct dependency: ${v.isDirect ? 'yes' : 'no'}`
+          );
+          const f = counts(full), p = counts(prod);
+          const lines = [
+            '# Free security and quality checks',
+            '',
+            `- Source commit: ${process.env.SOURCE_SHA}`,
+            `- Vitest lockfile version: ${lock.packages['node_modules/vitest']?.version ?? 'not found'}`,
+            '- Unit tests: passed',
+            '- TypeScript: passed',
+            '- ESLint: passed',
+            '- Production build: passed',
+            `- Full npm audit: ${f.total} vulnerabilities (critical ${f.critical}, high ${f.high}, moderate ${f.moderate}, low ${f.low})`,
+            `- Production-only npm audit: ${p.total} vulnerabilities (critical ${p.critical}, high ${p.high}, moderate ${p.moderate}, low ${p.low})`,
+            '',
+            '## Full audit findings',
+            '',
+            ...(findings.length ? findings : ['- None']),
+            '',
+            'The owner-signed X Layer testnet transaction and end-to-end settlement verification were not run by this workflow.',
+            'The paid Kane browser suite was not invoked.',
+            '',
+          ];
+          fs.mkdirSync('docs', { recursive: true });
+          fs.writeFileSync('docs/security-checks.md', lines.join('\n'));
+          NODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json docs/security-checks.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: record free security checks and refreshed lockfile"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
