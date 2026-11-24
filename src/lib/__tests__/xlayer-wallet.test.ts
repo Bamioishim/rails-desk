@@ -10,7 +10,7 @@ describe("OKX Connect session parsing", () => {
 
   it("rejects sessions that do not include X Layer testnet", () => {
     expect(() => parseOkxSessionAddress({
-      namespaces: { eip155: { accounts: ["eip155:1:0x1acb089eeb15dada38878fdace6b33d5de82bb16"] },
+      namespaces: { eip155: { accounts: ["eip155:1:0x1acb089eeb15dada38878fdace6b33d5de82bb16"] } },
     })).toThrow(/X Layer testnet account/);
   });
 });
