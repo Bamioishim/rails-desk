@@ -1,8 +1,8 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
-import { createDesk, decide, evaluate, getDesk, getProposal, propose, rotateAgentKey, updateRules, verifyDeskChain, DEFAULT_RULES } from "../server/desk";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { createDesk, decide, evaluate, getDesk, getProposal, propose, rotateAgentKey, rotateOwnerKey, updateRules, verifyDeskChain, DEFAULT_RULES } from "../server/desk";
 
 beforeAll(() => { process.env.RAILS_DESK_DATA_DIR = mkdtempSync(path.join(tmpdir(), "desk-test-")); delete process.env.KV_REST_API_URL; delete process.env.UPSTASH_REDIS_REST_URL; });
 
@@ -84,6 +84,51 @@ describe("desk API flow", () => {
     await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 10 });
     await expect(decide(ownerKey, pending.id, "approve")).rejects.toThrow(/current rules block/);
     expect((await getProposal(agentKey, pending.id)).awaiting_review).toBe(true);
+  });
+
+  it("counts a proposal created yesterday when it is approved today", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-23T23:30:00.000Z"));
+      const { ownerKey, agentKey } = await createDesk("Approval timestamp cap");
+      await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
+      const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Cross-midnight review" });
+      expect(pending.status).toBe("needs_review");
+
+      vi.setSystemTime(new Date("2026-11-24T00:30:00.000Z"));
+      await decide(ownerKey, pending.id, "approve");
+      const next = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Must count today's approval" });
+      expect(next.status).toBe("blocked");
+      expect(next.reasons.join(" ")).toContain("Daily spend cap");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("prevents a near-double spend across UTC midnight with a rolling 24-hour window", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-23T23:30:00.000Z"));
+      const { ownerKey, agentKey } = await createDesk("Midnight cap");
+      await updateRules(ownerKey, { allowedRecipients: ["Alex"], maxPerAction: 100, reviewLimit: 25, dailySpendCap: 25 });
+      const first = await propose(agentKey, { amount: 20, recipient: "Alex", reason: "Before midnight" });
+      expect(first.status).toBe("approved");
+
+      vi.setSystemTime(new Date("2026-11-24T00:30:00.000Z"));
+      const second = await propose(agentKey, { amount: 10, recipient: "Alex", reason: "After midnight" });
+      expect(second.status).toBe("blocked");
+      expect(second.reasons.join(" ")).toContain("Daily spend cap");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rotates the owner key and invalidates the previous credential", async () => {
+    const { ownerKey } = await createDesk("Owner key rotation");
+    const { ownerKey: replacement } = await rotateOwnerKey(ownerKey);
+    expect(replacement).not.toBe(ownerKey);
+    await expect(getDesk(ownerKey)).rejects.toThrow(/Invalid API key/);
+    expect((await getDesk(replacement)).id).toBeTruthy();
   });
 
   it("rejects bad keys and bad bodies", async () => {
