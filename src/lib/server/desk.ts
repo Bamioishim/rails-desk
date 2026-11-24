@@ -130,6 +130,26 @@ function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: s
   }, 0);
 }
 
+function trimProposals(proposals: Proposal[], now = Date.now()) {
+  const windowStart = now - 24 * 60 * 60 * 1000;
+  const retained = proposals.filter((proposal) => {
+    const pending = proposal.status === "needs_review" && !proposal.review;
+    if (pending) return true;
+    const active = proposal.status === "approved" ||
+      (proposal.status === "needs_review" && proposal.review?.decision === "approved");
+    if (!active) return false;
+    const committedAt = Date.parse(
+      proposal.status === "needs_review" && proposal.review?.decision === "approved"
+        ? proposal.review.at
+        : proposal.createdAt,
+    );
+    return Number.isFinite(committedAt) && committedAt > windowStart && committedAt <= now;
+  });
+  const retainedIds = new Set(retained.map((proposal) => proposal.id));
+  const history = proposals.filter((proposal) => !retainedIds.has(proposal.id)).slice(-MAX_PROPOSALS);
+  return [...history, ...retained].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+}
+
 function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
   const previousHash = desk.receipts.at(-1)?.hash ?? GENESIS;
   const base = { index: (desk.receipts.at(-1)?.index ?? 0) + 1, id: newId("rcpt"), at: new Date().toISOString(), ...r, previousHash };
@@ -202,7 +222,8 @@ export async function propose(key: string | null, body: unknown) {
     const receipt = appendReceipt(desk, { proposalId: proposal.id, event: "decided_by_rails", outcome: status, amount, recipient, detail: proposal.reasons.join(" "), policySnapshot });
     proposal.receiptIds.push(receipt.id);
     desk.proposals.push(proposal);
-    if (desk.proposals.length > MAX_PROPOSALS) desk.proposals = desk.proposals.slice(-MAX_PROPOSALS);
+    // Never trim an active reservation or spend record inside the cap window.
+    desk.proposals = trimProposals(desk.proposals);
     return publicProposal(proposal);
   });
 }
