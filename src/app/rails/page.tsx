@@ -26,6 +26,7 @@ export default function RailsPage() {
   const d = useDesk(4000);
   const [cap, setCap] = useState("20");
   const [review, setReview] = useState("10");
+  const [dailyCap, setDailyCap] = useState("100");
   const [names, setNames] = useState("Alex\nJordan\nSam");
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export default function RailsPage() {
   useEffect(() => {
     const rules = d.desk?.rules;
     if (!rules || loaded) return;
-    const t = setTimeout(() => { setCap(String(rules.maxPerAction)); setReview(String(rules.reviewLimit)); setNames(rules.allowedRecipients.join("\n")); setLoaded(true); }, 0);
+    const t = setTimeout(() => { setCap(String(rules.maxPerAction)); setReview(String(rules.reviewLimit)); setDailyCap(String(rules.dailySpendCap ?? 100)); setNames(rules.allowedRecipients.join("\n")); setLoaded(true); }, 0);
     return () => clearTimeout(t);
   }, [d.desk, loaded]);
 
@@ -52,7 +53,7 @@ export default function RailsPage() {
     const recipients = names.split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
     const allowedRecipients = [...new Map(recipients.map((x) => [x.toLowerCase(), x])).values()];
     try {
-      await d.saveRules({ allowedRecipients, maxPerAction: Number(cap), reviewLimit: Number(review) });
+      await d.saveRules({ allowedRecipients, maxPerAction: Number(cap), reviewLimit: Number(review), dailySpendCap: Number(dailyCap) });
       setRails({ spendingCap: Number(cap), allowedRecipients });
       setSaved(true);
     } catch (x) { setErr(x instanceof Error ? x.message : String(x)); }
@@ -92,10 +93,11 @@ export default function RailsPage() {
     <div className="layout-grid"><form className="panel" onSubmit={save}><div className="section-head"><div><h2 className="panel-title">Transfer policy</h2><div className="panel-desc">Changes apply to new proposals and are checked again at approval time.</div></div></div>
       <div className="field"><label htmlFor="cap">Maximum per action</label><input id="cap" type="number" min="0" step="0.01" value={cap} onChange={(e) => { setCap(e.target.value); setSaved(false); }} required /><span className="hint">Any proposal above this amount is blocked.</span></div>
       <div className="field"><label htmlFor="review">Review limit</label><input id="review" type="number" min="0" step="0.01" value={review} onChange={(e) => { setReview(e.target.value); setSaved(false); }} required /><span className="hint">Allowed proposals above this amount need your OK on the Receipts page. At or below it they are approved automatically.</span></div>
+      <div className="field"><label htmlFor="daily-cap">Daily spend cap (credits, UTC day)</label><input id="daily-cap" type="number" min="0" step="0.01" value={dailyCap} onChange={(e) => { setDailyCap(e.target.value); setSaved(false); }} required /><span className="hint">Approved and awaiting-review proposals reserve today’s budget. Refused and blocked proposals do not count. The day resets at 00:00 UTC.</span></div>
       <div className="field"><label htmlFor="recipients">Allowed recipients</label><textarea id="recipients" value={names} onChange={(e) => { setNames(e.target.value); setSaved(false); }} placeholder={"Alex\nJordan\nSam"} style={{ minHeight: 120 }} /><span className="hint">One recipient per line or comma-separated. Matching ignores letter case and surrounding spaces.</span></div>
       
       <button className="button primary" type="submit" disabled={!d.desk}>Save policy changes</button>{saved && <span role="status" aria-live="polite" style={{ marginLeft: 12, color: "var(--green)", fontSize: 12 }}>✓ Rails saved</span>}</form>
-      <aside className="panel"><h2 className="panel-title">How the referee applies policy</h2><div className="step"><div className="step-num">1</div><div><strong>Validate the amount</strong><p>Block zero, negative, invalid or over-maximum amounts.</p></div></div><div className="step"><div className="step-num">2</div><div><strong>Check the recipient</strong><p>Require an exact case-insensitive match in your allowlist.</p></div></div><div className="step"><div className="step-num">3</div><div><strong>Apply the review limit</strong><p>Above it, the proposal waits for your Approve or Refuse.</p></div></div><div className="step"><div className="step-num">4</div><div><strong>Record the decision</strong><p>Append the proposal and outcome to the receipt hash chain.</p></div></div></aside></div>
+      <aside className="panel"><h2 className="panel-title">How the referee applies policy</h2><div className="step"><div className="step-num">1</div><div><strong>Validate the amount</strong><p>Block zero, negative, invalid or over-maximum amounts.</p></div></div><div className="step"><div className="step-num">2</div><div><strong>Check the recipient</strong><p>Require an exact case-insensitive match in your allowlist.</p></div></div><div className="step"><div className="step-num">3</div><div><strong>Reserve the daily budget</strong><p>Approved and awaiting-review proposals count toward the UTC-day spend cap.</p></div></div><div className="step"><div className="step-num">4</div><div><strong>Apply the review limit</strong><p>Above it, the proposal waits for your Approve or Refuse.</p></div></div><div className="step"><div className="step-num">5</div><div><strong>Record the decision</strong><p>Append the proposal and outcome to the receipt hash chain.</p></div></div></aside></div>
 
     <div className="panel" style={{ marginTop: 15 }} id="connect">
       <div className="section-head"><div><h2 className="panel-title">Connect your agent</h2><div className="panel-desc">Give your agent this key. It can propose payments and read their status; only you can change rules or approve.</div></div><span className="tag">AGENT API</span></div>
@@ -110,7 +112,7 @@ export default function RailsPage() {
     <section className="panel" style={{ marginTop: 15 }} id="control-room">
       <div className="section-head"><div><div className="eyebrow">OPEN APP / CONTROL ROOM</div><h2 className="panel-title">Live activity</h2><div className="panel-desc">Server-recorded proposal decisions and demo activity. Refreshes every 4 seconds while this page is open.</div></div><span className="tag">{d.desk?.receipts.length ?? 0} EVENTS</span></div>
       {d.desk ? <>
-        <div className="action-row" style={{ marginBottom: 14 }}><span className="tag">MAX {d.desk.rules.maxPerAction} CREDITS</span><span className="tag">REVIEW ABOVE {d.desk.rules.reviewLimit}</span><span className="tag">{d.desk.rules.allowedRecipients.length} ALLOWED RECIPIENTS</span><span className="tag">{d.desk.pending} PENDING REVIEW</span><Link className="button button-small" href="/receipts">View all receipts →</Link></div>
+        <div className="action-row" style={{ marginBottom: 14 }}><span className="tag">MAX {d.desk.rules.maxPerAction} CREDITS</span><span className="tag">REVIEW ABOVE {d.desk.rules.reviewLimit}</span><span className="tag">DAILY CAP {d.desk.rules.dailySpendCap ?? 100}</span><span className="tag">{d.desk.rules.allowedRecipients.length} ALLOWED RECIPIENTS</span><span className="tag">{d.desk.pending} PENDING REVIEW</span><Link className="button button-small" href="/receipts">View all receipts →</Link></div>
         <div className="section-head"><div><strong style={{ fontSize: 12 }}>Recent activity</strong><div className="panel-desc">The newest 12 events from your persistent receipt chain.</div></div><button type="button" className="button ghost button-small" onClick={() => void d.refresh()}>Refresh now</button></div>
         {d.desk.receipts.length === 0 ? <div className="empty">No activity yet. Connect an agent or run a demo walkthrough to see events here.</div> : <div className="receipt-list">{d.desk.receipts.slice().reverse().slice(0, 12).map((r) => <div className="receipt-row" key={r.id}><div><div className="receipt-title">{r.source === "demo" ? "Demo · " : "App · "}{r.event.replaceAll("_", " ")}</div><div className="receipt-meta">{new Date(r.at).toLocaleString()} · {r.recipient} · {r.amount} credits · {decisionMessage(r.recipient, r.outcome, [r.detail])}</div></div><span className={decisionClass(r.outcome)}>{label(r.outcome)}</span></div>)}</div>}
         <div className="section-head" style={{ marginTop: 18 }}><div><strong style={{ fontSize: 12 }}>Recent proposals</strong><div className="panel-desc">What your connected agent has submitted.</div></div></div>

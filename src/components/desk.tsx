@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 
-export type DeskRules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number };
+export type DeskRules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number; dailySpendCap: number };
 export type DeskPolicySnapshot = { rules: DeskRules; checks: { rule: string; passed: boolean; detail: string }[] };
-export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked"; reasons: string[]; policy_snapshot?: DeskPolicySnapshot | null; review: null | { decision: "approved" | "refused"; at: string; policySnapshot?: DeskPolicySnapshot }; receiptIds: string[] };
+export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked"; reasons: string[]; policy_snapshot?: DeskPolicySnapshot | null; review: null | { decision: "approved" | "refused"; at: string; policySnapshot?: DeskPolicySnapshot }; settlement?: { chainId: number; txHash: string; from: string; payTo: string; asset: string; units: string; blockNumber: string; anchor: string; verifiedAt: string } | null; receiptIds: string[] };
 export type DeskReceipt = { index: number; id: string; at: string; proposalId: string; event: string; source?: "app" | "demo"; outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string; policySnapshot?: DeskPolicySnapshot; previousHash: string; hash: string };
-export type DeskState = { id: string; name: string; rules: DeskRules; proposals: DeskProposal[]; receipts: DeskReceipt[]; storage: "redis" | "file" | "ephemeral"; pending: number; agentKeyHint: string; verification: { valid: boolean; brokenAt: number | null } };
+export type DeskAnchor = { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: number; blockNumber: string; anchoredAt: string };
+export type DeskState = { id: string; name: string; rules: DeskRules; proposals: DeskProposal[]; receipts: DeskReceipt[]; anchors: DeskAnchor[]; storage: "redis" | "file" | "ephemeral"; pending: number; agentKeyHint: string; verification: { valid: boolean; brokenAt: number | null } };
 type Keys = { deskId: string; agentKey: string; ownerKey?: string };
 
 const STORAGE_KEY = "rails-desk-keys-v1";
@@ -69,7 +70,9 @@ export function useDesk(pollMs = 0) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(k)); setKeys(k); await refresh(k);
   };
   const saveRules = async (rules: DeskRules) => { if (!keys) return; await api("/api/v1/desk", { method: "PUT", body: JSON.stringify({ rules }) }); await refresh(); };
-  const decide = async (id: string, decision: "approve" | "refuse") => { if (!keys) return; await api(`/api/v1/proposals/${id}/decision`, { method: "POST", body: JSON.stringify({ decision }) }); await refresh(); };
+  const decide = async (id: string, decision: "approve" | "refuse") => { if (!keys) return; const result = await api<DeskProposal>(`/api/v1/proposals/${id}/decision`, { method: "POST", body: JSON.stringify({ decision }) }); await refresh(); return result; };
+  const recordSettlement = async (id: string, body: { txHash: string; payTo: string; anchor: string }) => { if (!keys) throw new Error("Owner session is unavailable."); const result = await api<DeskProposal>(`/api/v1/proposals/${id}/settlement`, { method: "POST", body: JSON.stringify(body) }); await refresh(); return result; };
+  const recordAnchor = async (body: { txHash: string; receiptHash: string; receiptIndex: number }) => { if (!keys) throw new Error("Owner session is unavailable."); const result = await api<DeskAnchor>("/api/v1/desk/anchors", { method: "POST", body: JSON.stringify(body) }); await refresh(); return result; };
   const rotate = async () => { if (!keys) return; const r = await api<{ agentKey: string }>("/api/v1/desk/agent-key", { method: "POST" }); const k = { ...keys, agentKey: r.agentKey }; localStorage.setItem(STORAGE_KEY, JSON.stringify(k)); setKeys(k); await refresh(k); };
   const recordDemoEvent = async (body: { amount: number; recipient: string; outcome: "approved" | "needs_review" | "blocked" | "refused"; detail: string; demoId?: string }) => { if (!keys) throw new Error("Create a desk before recording demo activity."); const receipt = await api<DeskReceipt>("/api/v1/demo/events", { method: "POST", body: JSON.stringify(body) }); await refresh(); return receipt; };
   const submitProposal = async (body: { amount: number; recipient: string; reason: string }) => { if (!keys) return null; const r = await api<{ status: string; reasons: string[]; receipt_id: string }>("/api/v1/proposals", { method: "POST", key: keys.agentKey, body: JSON.stringify({ ...body, agent: "Open App" }) }); await refresh(); return r; };
@@ -78,7 +81,7 @@ export function useDesk(pollMs = 0) {
     finally { localStorage.removeItem(STORAGE_KEY); setKeys(null); setDesk(null); }
   };
 
-  return { ready, keys, desk, error, refresh, create, saveRules, decide, rotate, submitProposal, recordDemoEvent, forget };
+  return { ready, keys, desk, error, refresh, create, saveRules, decide, recordSettlement, recordAnchor, rotate, submitProposal, recordDemoEvent, forget };
 }
 
 export const storageNote: Record<DeskState["storage"], string> = {

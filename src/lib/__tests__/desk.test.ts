@@ -60,6 +60,32 @@ describe("desk API flow", () => {
     expect((await propose(next, { amount: 1, recipient: "Alex" })).status).toBe("approved");
   });
 
+  it("enforces a daily spend cap and reserves budget for pending reviews", async () => {
+    const { ownerKey, agentKey } = await createDesk("Daily cap");
+    await updateRules(ownerKey, { allowedRecipients: ["Alex", "Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
+    const first = await propose(agentKey, { amount: 8, recipient: "Alex", reason: "First payment" });
+    expect(first.status).toBe("approved");
+    const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Needs review" });
+    expect(pending.status).toBe("needs_review");
+    const blocked = await propose(agentKey, { amount: 3, recipient: "Alex", reason: "Over daily budget" });
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.reasons.join(" ")).toContain("Daily spend cap");
+    expect(blocked.policy_snapshot?.rules.dailySpendCap).toBe(25);
+    await decide(ownerKey, pending.id, "refuse");
+    const afterRefusal = await propose(agentKey, { amount: 8, recipient: "Alex", reason: "Budget released" });
+    expect(afterRefusal.status).toBe("approved");
+  });
+
+  it("rechecks the daily cap when an owner approves a pending proposal", async () => {
+    const { ownerKey, agentKey } = await createDesk("Daily cap approval recheck");
+    await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
+    const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Needs owner review" });
+    expect(pending.status).toBe("needs_review");
+    await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 10 });
+    await expect(decide(ownerKey, pending.id, "approve")).rejects.toThrow(/current rules block/);
+    expect((await getProposal(agentKey, pending.id)).awaiting_review).toBe(true);
+  });
+
   it("rejects bad keys and bad bodies", async () => {
     await expect(propose(null, { amount: 1, recipient: "Alex" })).rejects.toThrow(/API key/);
     const { agentKey } = await createDesk();

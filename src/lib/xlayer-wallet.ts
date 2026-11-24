@@ -100,6 +100,60 @@ export async function sendRailTransfer({ to, amountUsd, anchor }: { to: Address;
   return { chainId: xLayerTestnet.id, hash, from, to, asset, units, anchor, anchored, blockNumber: receipt.blockNumber.toString(), status: receipt.status };
 }
 
+
+/** Owner-signed native test OKB transfer used by the approved-proposal settlement flow. */
+export async function sendTestnetOkbTransfer({ to, amountCredits, anchor }: { to: Address; amountCredits: number; anchor: Hex }) {
+  const provider = injectedProvider();
+  if (!provider) throw new Error("No browser wallet found. Install OKX Wallet, MetaMask or Rabby.");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(to)) throw new Error("Enter a valid EVM recipient address.");
+  if (!Number.isFinite(amountCredits) || amountCredits <= 0) throw new Error("The approved amount must be positive.");
+  await ensureTestnet();
+  const wallet = createWalletClient({ chain: xLayerTestnet, transport: custom(provider) });
+  const [from] = await wallet.requestAddresses();
+  if (!from) throw new Error("The connected wallet did not provide an account.");
+  const rate = Number(process.env.NEXT_PUBLIC_DEMO_OKB_PER_USD ?? "0.0001");
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error("Testnet OKB conversion rate is invalid.");
+  const units = (amountCredits * rate).toFixed(8);
+  const hash = await wallet.sendTransaction({
+    account: from,
+    to,
+    value: parseEther(units),
+    data: concatHex([ANCHOR_TAG, anchor]),
+    chain: xLayerTestnet,
+  });
+  let receipt;
+  try {
+    receipt = await testnetClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+  } catch {
+    // Preserve the submitted hash so the owner can retry server verification without sending twice.
+    return { hash, from, to, units, blockNumber: "pending", chainId: xLayerTestnet.id };
+  }
+  if (receipt.status !== "success") throw new Error("The X Layer testnet transfer reverted.");
+  return { hash, from, to, units, blockNumber: receipt.blockNumber.toString(), chainId: xLayerTestnet.id };
+}
+
+
+/** Owner-signed zero-value transaction that anchors the current receipt-chain head in calldata. */
+export async function sendReceiptHeadAnchor({ headHash }: { headHash: Hex }) {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(headHash)) throw new Error("Receipt head must be a 32-byte hash.");
+  const provider = injectedProvider();
+  if (!provider) throw new Error("No browser wallet found. Install OKX Wallet, MetaMask or Rabby.");
+  await ensureTestnet();
+  const wallet = createWalletClient({ chain: xLayerTestnet, transport: custom(provider) });
+  const [from] = await wallet.requestAddresses();
+  if (!from) throw new Error("The connected wallet did not provide an account.");
+  const hash = await wallet.sendTransaction({
+    account: from,
+    to: from,
+    value: BigInt(0),
+    data: concatHex([ANCHOR_TAG, headHash]),
+    chain: xLayerTestnet,
+  });
+  const receipt = await testnetClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+  if (receipt.status !== "success") throw new Error("The receipt-head anchor transaction reverted.");
+  return { hash, from, blockNumber: receipt.blockNumber.toString(), chainId: xLayerTestnet.id };
+}
+
 /** Re-reads a transfer from X Layer testnet and checks the receipt hash is in its calldata. */
 export async function verifyAnchor(hash: Hex, anchor: Hex) {
   const tx = await testnetClient.getTransaction({ hash });

@@ -8,7 +8,7 @@ import { createInterface } from "node:readline";
 const BASE = (process.env.RAILS_DESK_URL || "").replace(/\/$/, "");
 const KEY = process.env.RAILS_DESK_AGENT_KEY || "";
 const tools = [
-  { name: "propose_payment", description: "Propose a payment to the Rails Desk referee. It returns approved, needs_review (a person must OK it) or blocked, with reasons and a receipt id. Never treat needs_review or blocked as paid.", inputSchema: { type: "object", properties: { amount: { type: "number", description: "Amount in credits" }, recipient: { type: "string" }, reason: { type: "string", description: "Why the payment is needed" } }, required: ["amount", "recipient", "reason"] } },
+  { name: "propose_payment", description: "Propose a payment to the Rails Desk referee. It returns approved, needs_review (a person must OK it) or blocked, with reasons and a receipt id. Approved means policy approval only, not payment settlement; only the owner can initiate a testnet transfer. Never treat needs_review or blocked as paid.", inputSchema: { type: "object", properties: { amount: { type: "number", description: "Amount in credits" }, recipient: { type: "string" }, reason: { type: "string", description: "Why the payment is needed" } }, required: ["amount", "recipient", "reason"] } },
   { name: "get_proposal", description: "Read a proposal's current status, e.g. whether a needs_review payment was approved or refused.", inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
 ];
 

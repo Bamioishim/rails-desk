@@ -1,18 +1,19 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { loadVersioned, saveRaw, storageMode, StoreBusyError, withLock } from "./desk-store";
 
-export type Rules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number };
+export type Rules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number; dailySpendCap: number };
 export type Status = "approved" | "needs_review" | "blocked";
-export type Check = { rule: "amount" | "max_per_action" | "allowlist" | "review_limit"; passed: boolean; detail: string };
+export type Check = { rule: "amount" | "max_per_action" | "allowlist" | "review_limit" | "daily_spend_cap"; passed: boolean; detail: string };
 export type PolicySnapshot = { rules: Rules; checks: Check[] };
 export type Proposal = {
   id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string;
   status: Status; checks: Check[]; reasons: string[]; policySnapshot?: PolicySnapshot;
   review: null | { decision: "approved" | "refused"; at: string; note?: string; policySnapshot?: PolicySnapshot };
+  settlement?: { chainId: 1952; txHash: string; from: string; payTo: string; asset: "test OKB"; units: string; blockNumber: string; anchor: string; verifiedAt: string };
   receiptIds: string[];
 };
 export type DeskReceipt = {
-  index: number; id: string; at: string; proposalId: string; event: "decided_by_rails" | "approved_by_owner" | "refused_by_owner" | "demo_activity";
+  index: number; id: string; at: string; proposalId: string; event: "decided_by_rails" | "approved_by_owner" | "refused_by_owner" | "settled_on_xlayer_testnet" | "demo_activity";
   source?: "app" | "demo";
   outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string;
   /** Immutable rules and checks used for this event. Older receipts may not have a snapshot. */
@@ -22,10 +23,10 @@ export type DeskReceipt = {
 type Desk = {
   version: 1; id: string; name: string; createdAt: string;
   ownerKeyHash: string; agentKeyHash: string; agentKeyHint: string;
-  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[];
+  rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; anchors?: { receiptIndex: number; receiptHash: string; txHash: string; from: string; chainId: 1952; blockNumber: string; anchoredAt: string }[];
 };
 
-export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10 };
+export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10, dailySpendCap: 100 };
 const GENESIS = "0".repeat(64);
 const MAX_PROPOSALS = 500;
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -82,10 +83,11 @@ export function cleanRules(input: unknown): Rules {
   const r = (input ?? {}) as Partial<Rules>;
   const names = Array.isArray(r.allowedRecipients) ? r.allowedRecipients.map((x) => String(x).trim()).filter(Boolean).slice(0, 200) : [];
   const uniq = [...new Map(names.map((n) => [n.toLowerCase(), n.slice(0, 80)])).values()];
-  const max = Number(r.maxPerAction), review = Number(r.reviewLimit);
+  const max = Number(r.maxPerAction), review = Number(r.reviewLimit), daily = Number(r.dailySpendCap ?? DEFAULT_RULES.dailySpendCap);
   if (!Number.isFinite(max) || max < 0) throw new DeskError("maxPerAction must be a number of 0 or more.", 400);
   if (!Number.isFinite(review) || review < 0) throw new DeskError("reviewLimit must be a number of 0 or more.", 400);
-  return { allowedRecipients: uniq, maxPerAction: Math.round(max * 100) / 100, reviewLimit: Math.round(Math.min(review, max) * 100) / 100 };
+  if (!Number.isFinite(daily) || daily < 0) throw new DeskError("dailySpendCap must be a number of 0 or more.", 400);
+  return { allowedRecipients: uniq, maxPerAction: Math.round(max * 100) / 100, reviewLimit: Math.round(Math.min(review, max) * 100) / 100, dailySpendCap: Math.round(daily * 100) / 100 };
 }
 
 export function evaluate(amount: number, recipient: string, rules: Rules): { status: Status; checks: Check[] } {
@@ -103,7 +105,17 @@ export function evaluate(amount: number, recipient: string, rules: Rules): { sta
 }
 
 function snapshotPolicy(rules: Rules, checks: Check[]): PolicySnapshot {
-  return { rules: { ...rules, allowedRecipients: [...rules.allowedRecipients] }, checks: checks.map((check) => ({ ...check })) };
+  return { rules: { ...DEFAULT_RULES, ...rules, allowedRecipients: [...rules.allowedRecipients] }, checks: checks.map((check) => ({ ...check })) };
+}
+
+function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: string) {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
+  return desk.proposals.reduce((sum, proposal) => {
+    if (proposal.id === excludeProposalId) return sum;
+    const created = Date.parse(proposal.createdAt);
+    const active = proposal.status === "approved" || (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
+    return active && Number.isFinite(created) && created >= start ? sum + proposal.amount : sum;
+  }, 0);
 }
 
 function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | "previousHash" | "hash">) {
@@ -118,18 +130,18 @@ function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | 
 export function publicDesk(desk: Desk) {
   const { ownerKeyHash: _o, agentKeyHash: _a, ...rest } = desk;
   void _o; void _a;
-  return { ...rest, storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
+  return { ...rest, anchors: desk.anchors ?? [], storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
 }
 export function publicProposal(p: Proposal) {
   const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
-  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, created_at: p.createdAt };
+  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, settlement: p.settlement ?? null, created_at: p.createdAt };
 }
 
 export async function createDesk(name?: string) {
   const id = randomBytes(8).toString("hex");
   const ownerKey = `rd_owner_${id}_${token()}`;
   const agentKey = `rd_agent_${id}_${token()}`;
-  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [] };
+  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [], anchors: [] };
   await saveRaw(id, JSON.stringify(desk));
   return { desk: publicDesk(desk), ownerKey, agentKey };
 }
@@ -158,8 +170,13 @@ export async function propose(key: string | null, body: unknown) {
   if (!recipient) throw new DeskError("recipient (string) is required.", 400);
   if (b.amount === undefined || b.amount === null || Number.isNaN(amount)) throw new DeskError("amount (number) is required.", 400);
   return mutate(key, "any", (desk) => {
-    const { status, checks } = evaluate(amount, recipient, desk.rules);
-    const policySnapshot = snapshotPolicy(desk.rules, checks);
+    const { status: initialStatus, checks } = evaluate(amount, recipient, { ...DEFAULT_RULES, ...desk.rules });
+    const committed = dailyCommittedSpend(desk);
+    const dailyCap = desk.rules.dailySpendCap ?? DEFAULT_RULES.dailySpendCap;
+    const withinDaily = committed + amount <= dailyCap;
+    checks.push({ rule: "daily_spend_cap", passed: initialStatus === "blocked" || withinDaily, detail: initialStatus === "blocked" ? "Not reached: already blocked." : withinDaily ? `${committed} already committed + ${amount} proposed is within the daily cap of ${dailyCap}.` : `Daily spend cap of ${dailyCap} would be exceeded (${committed} already committed + ${amount} proposed).` });
+    const status: Status = initialStatus === "blocked" || !withinDaily ? "blocked" : initialStatus;
+    const policySnapshot = snapshotPolicy({ ...DEFAULT_RULES, ...desk.rules }, checks);
     const proposal: Proposal = { id: newId("prop"), createdAt: new Date().toISOString(), amount, recipient, reason, agent, status, checks, reasons: checks.filter((c) => !c.passed || (c.rule === "review_limit" && status === "needs_review")).map((c) => c.detail), policySnapshot, review: null, receiptIds: [] };
     if (status === "approved") proposal.reasons = ["Within every rule, so it is approved without a person."];
     const receipt = appendReceipt(desk, { proposalId: proposal.id, event: "decided_by_rails", outcome: status, amount, recipient, detail: proposal.reasons.join(" "), policySnapshot });
@@ -186,12 +203,81 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     if (p.status !== "needs_review") throw new DeskError(`This proposal was ${p.status} by the rails; only proposals that need review can be decided.`, 409);
     if (p.review) throw new DeskError(`Already ${p.review.decision}.`, 409);
     // Re-check against the current rules: a payment blocked by today's rules cannot be approved.
-    const recheck = evaluate(p.amount, p.recipient, desk.rules);
-    if (decision === "approve" && recheck.status === "blocked") throw new DeskError("The current rules block this payment, so it cannot be approved.", 409);
-    const policySnapshot = snapshotPolicy(desk.rules, recheck.checks);
+    const recheck = evaluate(p.amount, p.recipient, { ...DEFAULT_RULES, ...desk.rules });
+    const committedWithoutProposal = dailyCommittedSpend(desk, new Date(), p.id);
+    const dailyCap = desk.rules.dailySpendCap ?? DEFAULT_RULES.dailySpendCap;
+    const withinDaily = committedWithoutProposal + p.amount <= dailyCap;
+    recheck.checks.push({ rule: "daily_spend_cap", passed: recheck.status === "blocked" || withinDaily, detail: recheck.status === "blocked" ? "Not reached: already blocked." : withinDaily ? `${committedWithoutProposal} already committed + ${p.amount} proposed is within the daily cap of ${dailyCap}.` : `Daily spend cap of ${dailyCap} would be exceeded (${committedWithoutProposal} already committed + ${p.amount} proposed).` });
+    if (decision === "approve" && (recheck.status === "blocked" || !withinDaily)) throw new DeskError("The current rules block this payment, so it cannot be approved.", 409);
+    const policySnapshot = snapshotPolicy({ ...DEFAULT_RULES, ...desk.rules }, recheck.checks);
     p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined, policySnapshot };
     const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review.", policySnapshot });
     p.receiptIds.push(r.id);
+    return publicProposal(p);
+  });
+}
+
+
+
+export async function recordReceiptHeadAnchor(key: string | null, input: unknown) {
+  const body = (input ?? {}) as Record<string, unknown>;
+  const txHash = typeof body.txHash === "string" ? body.txHash.toLowerCase() : "";
+  const receiptHash = typeof body.receiptHash === "string" ? body.receiptHash.toLowerCase() : "";
+  const receiptIndex = Number(body.receiptIndex);
+  if (!/^0x[0-9a-f]{64}$/.test(txHash) || !/^[0-9a-f]{64}$/.test(receiptHash) || !Number.isSafeInteger(receiptIndex) || receiptIndex < 1) {
+    throw new DeskError("A valid transaction hash, receipt hash and receipt index are required.", 400);
+  }
+  const { desk } = await authed(key, "owner");
+  if (!verifyDeskChain(desk.receipts).valid) throw new DeskError("The receipt chain failed verification; refusing to anchor it.", 409);
+  const head = desk.receipts.find((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
+  if (!head) throw new DeskError("The supplied receipt head is not part of this desk's current chain.", 409);
+  const { verifyXLayerReceiptHeadAnchor } = await import("./xlayer-settlement");
+  const verified = await verifyXLayerReceiptHeadAnchor({ txHash: txHash as `0x${string}`, anchor: ("0x" + receiptHash) as `0x${string}` });
+  return mutate(key, "owner", (current) => {
+    const stillInChain = current.receipts.some((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
+    if (!stillInChain) throw new DeskError("The receipt chain changed while the anchor was being verified. Refresh and try again.", 409);
+    current.anchors ??= [];
+    if (current.anchors.some((item) => item.txHash.toLowerCase() === txHash || (item.receiptIndex === receiptIndex && item.receiptHash === receiptHash))) throw new DeskError("This receipt head has already been anchored.", 409);
+    current.anchors.push({ receiptIndex, receiptHash, ...verified });
+    current.anchors.sort((a, b) => a.receiptIndex - b.receiptIndex);
+    return current.anchors.find((item) => item.txHash.toLowerCase() === txHash);
+  });
+}
+
+export async function recordTestnetSettlement(key: string | null, id: string, input: unknown) {
+  const body = (input ?? {}) as Record<string, unknown>;
+  const txHash = typeof body.txHash === "string" ? body.txHash : "";
+  const payTo = typeof body.payTo === "string" ? body.payTo.toLowerCase() : "";
+  const anchor = typeof body.anchor === "string" ? body.anchor.toLowerCase() : "";
+  if (!/^0x[0-9a-f]{64}$/.test(txHash) || !/^0x[0-9a-f]{40}$/.test(payTo) || !/^0x[0-9a-f]{64}$/.test(anchor)) {
+    throw new DeskError("A valid X Layer testnet transaction hash, recipient address and receipt anchor are required.", 400);
+  }
+  const { desk } = await authed(key, "owner");
+  const proposal = desk.proposals.find((p) => p.id === id);
+  if (!proposal) throw new DeskError("Proposal not found.", 404);
+  const approved = proposal.status === "approved" || (proposal.status === "needs_review" && proposal.review?.decision === "approved");
+  if (!approved) throw new DeskError("Only an approved proposal can be settled.", 409);
+  if (proposal.settlement) throw new DeskError("This proposal already has a verified settlement.", 409);
+  const originalReceipt = desk.receipts.find((r) => r.id === proposal.receiptIds[0]);
+  if (!originalReceipt) throw new DeskError("The proposal's original receipt is missing.", 409);
+  const expectedPayload = { proposalId: proposal.id, receiptHash: originalReceipt.hash, payTo, amount: proposal.amount };
+  const expectedAnchor = sha(JSON.stringify(expectedPayload));
+  if (anchor !== "0x" + expectedAnchor) throw new DeskError("The supplied anchor does not match this approved proposal and recipient.", 400);
+
+  const { verifyXLayerTestnetTransfer } = await import("./xlayer-settlement");
+  const approvedAt = proposal.review?.decision === "approved" ? proposal.review.at : proposal.createdAt;
+  const verified = await verifyXLayerTestnetTransfer({ txHash: txHash as `0x${string}`, payTo: payTo as `0x${string}`, amountCredits: proposal.amount, approvedAt, anchor: anchor as `0x${string}` });
+
+  return mutate(key, "owner", (current) => {
+    const p = current.proposals.find((x) => x.id === id);
+    if (!p) throw new DeskError("Proposal not found.", 404);
+    const stillApproved = p.status === "approved" || (p.status === "needs_review" && p.review?.decision === "approved");
+    if (!stillApproved) throw new DeskError("The proposal is no longer approved.", 409);
+    if (p.settlement) throw new DeskError("This proposal already has a verified settlement.", 409);
+    if (current.proposals.some((other) => other.id !== id && other.settlement?.txHash.toLowerCase() === txHash)) throw new DeskError("This transaction is already attached to another proposal.", 409);
+    p.settlement = { ...verified, txHash, anchor, verifiedAt: new Date().toISOString() };
+    const receipt = appendReceipt(current, { proposalId: p.id, event: "settled_on_xlayer_testnet", outcome: "approved", amount: p.amount, recipient: p.recipient, detail: `Settled on X Layer testnet. Transaction: ${txHash}`, policySnapshot: p.review?.policySnapshot ?? p.policySnapshot });
+    p.receiptIds.push(receipt.id);
     return publicProposal(p);
   });
 }

@@ -9,12 +9,12 @@ export const xLayer = defineChain({
   blockExplorers: { default: { name: "OKX Explorer", url: "https://web3.okx.com/explorer/x-layer" } },
 });
 
-/** X Layer testnet: approved transfers are sent here. Test OKB has no value. */
+/** X Layer testnet: prefer the confirmed working official OKX RPC for browser and server reads. */
 export const xLayerTestnet = defineChain({
   id: 1952,
   name: "X Layer Testnet",
   nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
-  rpcUrls: { default: { http: ["https://testrpc.xlayer.tech/terigon", "https://xlayertestrpc.okx.com/terigon"] } },
+  rpcUrls: { default: { http: ["https://xlayertestrpc.okx.com/terigon", "https://testrpc.xlayer.tech/terigon"] } },
   blockExplorers: { default: { name: "OKX Explorer", url: "https://web3.okx.com/explorer/x-layer-testnet" } },
   testnet: true,
 });

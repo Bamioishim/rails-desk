@@ -7,6 +7,7 @@ Run locally:
 ~~~bash
 npm ci
 npm test
+npm run typecheck
 npm run lint
 npm run build
 npm run kane:gate
@@ -14,11 +15,29 @@ npm run kane:gate
 
 The Kane gate builds a local production build, starts it, and runs the five browser tests in tests/kane/. It exits non-zero if any test fails. It requires Kane CLI 0.10.6 and LT_USERNAME / LT_ACCESS_KEY credentials.
 
-GitHub Actions runs the Kane gate for pull requests and pushes to main. The post-merge run is the evidence for the exact main commit; earlier PR-branch runs are not a substitute.
+GitHub Actions runs the Kane gate for pull requests and pushes to main. A post-merge run is the evidence for the exact main commit; PR-branch runs are not a substitute.
+
+## Manual browser acceptance: 5/5 passed on 24 November 2026
+
+The project owner manually exercised all five Kane browser scenarios against the current feature build and confirmed that all five passed:
+
+1. Landing page and demo entry.
+2. Complete guided walkthrough and live event log.
+3. Owner approval and testnet settlement flow.
+4. Blocked-recipient wording and policy outcome.
+5. Agent review and proposal status flow.
+
+This is a **manual 5/5 acceptance result**, reported by the project owner. It is not represented as a successful automated Kane run.
+
+## Automated Kane run and credit limitation
+
+GitHub Actions run [#92](https://github.com/Bamioishim/rails-desk/actions/runs/45202364063) completed with 4/5 browser scenarios passing. The landing/demo-entry scenario did not complete because the Kane service returned `insufficient credits`. That is a test-service quota failure, not a recorded application assertion failure.
+
+The automated result remains 4/5. The manual acceptance above separately records the project owner's successful 5/5 walkthrough. No additional Kane run should be triggered until the service credit balance is replenished.
 
 ## Production Redis smoke test
 
-npm run verify:production creates a fresh desk on the live deployment, submits a synthetic Jordan proposal for 15 credits, then reads the desk twice. It checks that:
+`npm run verify:production` creates a fresh desk on the live deployment, submits a synthetic Jordan proposal for 15 credits, then reads the desk twice. It checks that:
 
 1. The live API reports storage: redis.
 2. The proposal remains needs_review and is never approved.
@@ -39,17 +58,6 @@ The post-merge Production Redis smoke workflow passed on main commit 921b2b80d9f
 
 No approval or funds movement occurred. See [the successful Production Redis workflow](https://github.com/Bamioishim/rails-desk/actions/runs/45184739958).
 
-## Current-main Kane gate: passed 23 November 2026
-
-The post-merge Kane gate passed against main commit af2862d260b8c56d0350c0005ad700ae83f40b9d.
-
-- Unit tests: 49 passed across 9 test files.
-- Browser tests: 5/5 passed.
-- The five browser scenarios cover landing navigation, the complete guided walkthrough, approval and mock execution, blocked-recipient wording, and the app agent-review flow.
-- The Kane report was uploaded as the `kane-report` workflow artifact.
-
-See [the successful current-main Kane workflow](https://github.com/Bamioishim/rails-desk/actions/runs/45185353719) and its [Kane report artifact](https://github.com/Bamioishim/rails-desk/actions/runs/45185353719/artifacts/14824306952).
-
 ## Historical Kane evidence
 
-The previous fail → fix → pass sequence and the 5/5 run from 20 November 2026 are preserved under docs/kane-evidence/. Those historical results document earlier commits only. The current-main result above is the release evidence for commit af2862d260b8c56d0350c0005ad700ae83f40b9d.
+Earlier automated 5/5 results are historical and apply only to the commits named in their original reports. They are not substituted for the current branch's manual acceptance result or current automated status.
