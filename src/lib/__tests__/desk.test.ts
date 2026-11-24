@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { createDesk, decide, evaluate, getDesk, getProposal, propose, rotateAgentKey, rotateOwnerKey, updateRules, verifyDeskChain, DEFAULT_RULES } from "../server/desk";
+import { createDesk, decide, evaluate, getDesk, getProposal, propose, rotateAgentKey, rotateOwnerKey, updateRules, verifyDeskChain, recordDemoEvent, DEFAULT_RULES } from "../server/desk";
 
 beforeAll(() => { process.env.RAILS_DESK_DATA_DIR = mkdtempSync(path.join(tmpdir(), "desk-test-")); delete process.env.KV_REST_API_URL; delete process.env.UPSTASH_REDIS_REST_URL; });
 
@@ -58,6 +58,26 @@ describe("desk API flow", () => {
     const { agentKey: next } = await rotateAgentKey(ownerKey);
     await expect(propose(agentKey, { amount: 1, recipient: "Alex" })).rejects.toThrow(/Invalid API key/);
     expect((await propose(next, { amount: 1, recipient: "Alex" })).status).toBe("approved");
+  });
+
+  it("keeps simulated demo activity in a separate verified chain", async () => {
+    const { ownerKey, agentKey } = await createDesk("Separate demo chain");
+    await recordDemoEvent(ownerKey, { demoId: "walkthrough-1", recipient: "Alex", amount: 8, outcome: "approved", detail: "Simulated demo approval." });
+
+    const afterDemo = await getDesk(ownerKey);
+    expect(afterDemo.receipts).toHaveLength(0);
+    expect(afterDemo.demoReceipts).toHaveLength(1);
+    expect(afterDemo.demoReceipts?.[0].source).toBe("demo");
+    expect(afterDemo.demoVerification?.valid).toBe(true);
+    expect(verifyDeskChain(afterDemo.receipts).valid).toBe(true);
+
+    await propose(agentKey, { amount: 5, recipient: "Alex", reason: "Real app proposal" });
+    const afterProposal = await getDesk(ownerKey);
+    expect(afterProposal.receipts).toHaveLength(1);
+    expect(afterProposal.receipts[0].source).toBeUndefined();
+    expect(afterProposal.demoReceipts).toHaveLength(1);
+    expect(verifyDeskChain(afterProposal.receipts).valid).toBe(true);
+    expect(verifyDeskChain(afterProposal.demoReceipts ?? []).valid).toBe(true);
   });
 
   it("enforces a daily spend cap and reserves budget for pending reviews", async () => {
