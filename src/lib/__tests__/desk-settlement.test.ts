@@ -43,6 +43,21 @@ async function settlementBody(ownerKey: string, proposalId: string, txHash = set
 }
 
 describe("desk on-chain transaction recording", () => {
+  it("binds the settlement commitment to the exact reviewed sender", async () => {
+    const { ownerKey, agentKey } = await createDesk("Sender-bound settlement anchor");
+    const proposal = await propose(agentKey, { amount: 12, recipient: "Alex", reason: "Bind sender into commitment" });
+    await decide(ownerKey, proposal.id, "approve");
+    const body = await settlementBody(ownerKey, proposal.id);
+    await expect(recordTestnetSettlement(ownerKey, proposal.id, {
+      ...body,
+      expectedFrom: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    })).rejects.toMatchObject({
+      message: "The supplied anchor does not match this approved proposal and recipient.",
+      status: 400,
+    });
+    expect(verification.verifyTransfer).not.toHaveBeenCalled();
+  });
+
   it("rejects a self-transfer at the server boundary before calling the chain verifier", async () => {
     const { ownerKey, agentKey } = await createDesk("Reject self settlement");
     const proposal = await propose(agentKey, { amount: 12, recipient: "Alex", reason: "Self transfer attempt" });
