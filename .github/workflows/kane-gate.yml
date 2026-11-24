@@ -1,5 +1,5 @@
-# Active copy of ci/kane-gate.yml. Runs on pull requests and on demand (Actions → Kane gate → Run workflow).
-# Runs on pull requests and main so the merged commit receives its own fresh gate result.
+# Active workflow. Kane is paid, so runs only when explicitly dispatched from Actions.
+# PR pushes and merges do not trigger paid browser runs automatically.
 name: Kane gate
 
 # Runs the Kane CLI browser tests against a fresh build of this PR and fails the check
@@ -8,14 +8,11 @@ name: Kane gate
 # Missing secrets fail the job. A skipped run is not a passing gate.
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: rails-desk-kane-gate-${{ github.sha }}
-  cancel-in-progress: false
+  group: rails-desk-kane-gate
+  cancel-in-progress: true
 
 permissions:
   contents: read
