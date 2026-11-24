@@ -3,8 +3,6 @@ name: Free checks (no Kane)
 on:
   push:
     branches: [testnet-settlement-rpc-fix]
-    paths-ignore:
-      - ".github/workflows/free-checks.yml"
   workflow_dispatch:
 
 permissions:
