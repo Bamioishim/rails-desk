@@ -77,3 +77,14 @@ No approval or funds movement occurred. See [the successful Production Redis wor
 ## Historical Kane evidence
 
 Earlier automated 5/5 results are historical and apply only to the commits named in their original reports. They are not substituted for the current branch's manual acceptance result or current automated status.
+
+
+## Rolling spend-cap and owner-key hardening
+
+The `fix/rolling-daily-cap-owner-security` branch adds regression coverage for:
+- a proposal created before midnight and approved after midnight;
+- spending across UTC midnight under a rolling 24-hour cap;
+- a pending proposal retaining its reservation beyond 24 hours until the owner decides;
+- owner-key rotation invalidating the previous credential.
+
+It also adds the owner session rotation endpoint and removes the legacy owner key from browser storage after the HttpOnly cookie has been established. The free checks workflow is enabled for this branch. These changes remain unmerged until automated checks and review complete.
