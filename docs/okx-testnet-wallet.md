@@ -1,30 +1,29 @@
-# OKX wallet connection for X Layer testnet
+# Browser wallet connection for X Layer testnet
 
-Rails Desk's X Layer settlement flow uses the official `@okxconnect/ui` SDK for an explicit, connection-only OKX App Wallet pairing step.
+Rails Desk uses the standard EIP-1193 provider injected by a browser wallet extension. This keeps wallet signing in the user's wallet and uses `viem`'s existing custom-provider transport; no wallet-connect SDK or new project key is required.
 
-## Required wallet setup
+## Wallet setup
 
-- Install or update the OKX mobile app to version 6.90.1 or later.
-- Sign in to the same OKX account that owns the intended test wallet, or import that wallet into the app yourself. Rails Desk never asks for a seed phrase or private key.
-- Confirm the app can display the exact wallet address configured for this test: `0x1acb089eeb15dada38878fdace6b33d5de82bb16`.
-- Add or enable X Layer Testnet (chain ID 1952) in the wallet if it is not already available.
+- Use a browser with an EVM wallet extension, such as OKX Wallet or MetaMask.
+- Add or enable X Layer Testnet (chain ID `1952`) in the wallet. Rails Desk may ask the wallet to switch to or add this test network when connecting.
+- Rails Desk never asks for a seed phrase or private key.
 
-The previous Google sign-in to OKX Web3 does not prove that the same wallet is available in the mobile app. QR pairing only works after the wallet is accessible there.
+This injected connector does not provide QR-code or mobile-app pairing. A browser-injected wallet is required for this connection path.
 
-## Connection and settlement
+## Connect and review
 
-1. In an approved-proposal settlement dialog, select **Connect OKX Wallet · QR / mobile app**.
-2. Scan the SDK-provided QR code with OKX Wallet on the phone, or follow the mobile deep link when using a mobile browser.
-3. Approve the connection in the app. This step only requests the account/session; it does not ask for a message signature and cannot send funds.
-4. Rails Desk checks the returned address against the configured test wallet. A different account is rejected.
-5. Enter the recipient and select **Send test OKB**. This is a separate action and opens the wallet's transaction confirmation. Only a wallet-approved X Layer testnet transaction can proceed.
+1. Select **Connect browser wallet · X Layer Testnet**. The extension shares the selected account and may ask to switch or add X Layer Testnet. Connecting does not request a signature or send a transaction.
+2. Rails Desk confirms that the selected account and active network are on X Layer Testnet.
+3. For settlement or receipt anchoring, review the exact sender, recipient, amount, chain, and receipt commitment in Rails Desk first. A settlement recipient must differ from the sending wallet; self-transfers are rejected because they do not settle a payment.
+4. The wallet then presents its own transaction confirmation. Only approve if the details match your review; cancel if they do not. Rails Desk checks the resulting X Layer testnet transaction/receipt before recording it.
 
-The SDK is a public npm dependency and does not require a paid WalletConnect project ID. Network fees apply only if the user separately approves a testnet transaction and are paid in testnet OKB.
+Smart-account settlements submitted through ERC-4337 require the server's `XLAYER_TESTNET_RPC_URL` to support `debug_traceTransaction` with `callTracer`. The verifier requires two L2 confirmations as an inclusion threshold; this is not a claim of irreversible protocol finality. The public default RPC may deny trace requests; in that case Rails Desk leaves the settlement unrecorded rather than inferring that the inner payment succeeded. Configure a trace-capable X Layer Testnet RPC on the server for this wallet flow.
 
-## Scope
+## Safety scope
 
 - Chain ID: `1952` (X Layer Testnet) only.
-- No mainnet chain is requested by the connection flow.
-- No private keys, recovery phrases, or wallet secrets are read or stored by Rails Desk.
-- The connect button requests no signature and sends no transaction.
-- The settlement path continues to verify the mined transaction before recording settlement.
+- Settlement and receipt-anchor actions remain separate and require an explicit approval in the wallet.
+- Receipt anchoring is a zero-value self-transaction but still requires testnet gas.
+- Contract recipients are not supported for settlement. The verifier checks that the destination has no contract code, because sending the receipt commitment as calldata to an unknown contract could invoke an unintended method.
+- No private keys or recovery phrases are read or stored by Rails Desk.
+- QR/mobile app pairing is not supported by this injected-provider implementation.
