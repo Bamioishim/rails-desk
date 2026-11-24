@@ -1,6 +1,6 @@
 # Free security and quality checks
 
-- Source commit: e155d3f17d214eab137acfd802bce6c9655a55aa
+- Source commit: 31722d93dc6cbda26a42e091f3aae37e7cca0e20
 - Vitest lockfile version: 4.1.12
 - Unit tests: passed
 - TypeScript: passed
