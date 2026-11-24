@@ -16,9 +16,74 @@ declare global {
   interface Window { ethereum?: EIP1193Provider & { isOkxWallet?: boolean } ; okxwallet?: EIP1193Provider }
 }
 
+const OKX_EVM_CHAIN = `eip155:${xLayerTestnet.id}`;
+const EXPECTED_OKX_TESTNET_WALLET = "0x1acb089eeb15dada38878fdace6b33d5de82bb16";
+
+type OkxSession = { namespaces?: { eip155?: { accounts?: string[] } } };
+type OkxConnectUi = {
+  openModal: (params: unknown) => Promise<OkxSession | undefined>;
+  request: (args: { method: string; params?: unknown[] | object }, chain: string) => Promise<unknown>;
+};
+
+let okxUiPromise: Promise<OkxConnectUi> | null = null;
+let activeOkxProvider: EIP1193Provider | null = null;
+let activeOkxAccount: Address | null = null;
+
+async function getOkxConnectUi(): Promise<OkxConnectUi> {
+  if (!okxUiPromise) {
+    okxUiPromise = import("@okxconnect/ui").then(async ({ OKXUniversalConnectUI }) =>
+      await OKXUniversalConnectUI.init({
+        DAppMetaData: {
+          name: "Rails Desk",
+          icon: "https://rails-desk.vercel.app/icon.png",
+        },
+        actionsConfiguration: { modals: "before" },
+        language: "en_US",
+        restoreConnection: true,
+      }) as unknown as OkxConnectUi
+    );
+  }
+  return okxUiPromise;
+}
+
+export function parseOkxSessionAddress(session: OkxSession): Address {
+  const accounts = session.namespaces?.eip155?.accounts ?? [];
+  const account = accounts.find((value) => value.toLowerCase().startsWith(`${OKX_EVM_CHAIN.toLowerCase()}:`));
+  const address = account?.split(":").at(-1);
+  if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new Error("OKX connected without an X Layer testnet account. Add X Layer Testnet (chain ID 1952) in OKX Wallet and reconnect.");
+  }
+  return address as Address;
+}
+
+/** Connects through OKX's App Wallet QR/deep-link flow. This requests accounts only, never a signature or transaction. */
+export async function connectOkxWallet(): Promise<Address> {
+  const ui = await getOkxConnectUi();
+  const session = await ui.openModal({
+    namespaces: {
+      eip155: {
+        chains: [OKX_EVM_CHAIN],
+        defaultChain: String(xLayerTestnet.id),
+        rpcMap: { [String(xLayerTestnet.id)]: xLayerTestnet.rpcUrls.default.http[0] },
+      },
+    },
+  });
+  if (!session) throw new Error("OKX wallet connection was cancelled.");
+  const address = parseOkxSessionAddress(session);
+  if (address.toLowerCase() !== EXPECTED_OKX_TESTNET_WALLET) {
+    throw new Error(`Wrong wallet connected. Rails Desk is configured for ${EXPECTED_OKX_TESTNET_WALLET}; OKX returned ${address}. Switch to the intended test wallet and reconnect.`);
+  }
+
+  activeOkxProvider = {
+    request: (args: { method: string; params?: unknown[] | object }) => ui.request(args, OKX_EVM_CHAIN),
+  } as unknown as EIP1193Provider;
+  activeOkxAccount = address;
+  return address;
+}
+
 export function injectedProvider(): EIP1193Provider | null {
   if (typeof window === "undefined") return null;
-  return window.okxwallet ?? window.ethereum ?? null;
+  return activeOkxProvider ?? window.okxwallet ?? window.ethereum ?? null;
 }
 
 export const testnetClient = createPublicClient({
@@ -111,6 +176,9 @@ export async function sendTestnetOkbTransfer({ to, amountCredits, anchor }: { to
   const wallet = createWalletClient({ chain: xLayerTestnet, transport: custom(provider) });
   const [from] = await wallet.requestAddresses();
   if (!from) throw new Error("The connected wallet did not provide an account.");
+  if (activeOkxProvider && from.toLowerCase() !== activeOkxAccount?.toLowerCase()) {
+    throw new Error("The connected OKX account changed. Reconnect the approved test wallet before sending.");
+  }
   const rate = Number(process.env.NEXT_PUBLIC_DEMO_OKB_PER_USD ?? "0.0001");
   if (!Number.isFinite(rate) || rate <= 0) throw new Error("Testnet OKB conversion rate is invalid.");
   const units = (amountCredits * rate).toFixed(8);
