@@ -45,6 +45,8 @@ The PR Kane run [#100](https://github.com/Bamioishim/rails-desk/actions/runs/453
 
 The branch now also exposes owner-session rotation in the `/rails` UI. The owner rotates the credential through the existing same-origin endpoint; the new credential remains inside the HttpOnly cookie and is never displayed or copied into agent configuration. The spend-cap controls describe the actual rolling 24-hour behavior.
 
+The latest free-check run [#20](https://github.com/Bamioishim/rails-desk/actions/runs/45474117600) passed on commit `eb5f4e1`: unit tests, TypeScript, ESLint, production build, full npm audit, and production-only npm audit. Both audit reports recorded zero vulnerabilities. Its evidence is uploaded as the `free-security-checks` artifact; the workflow no longer commits generated files back to the branch.
+
 ## CI workflow hardening and isolated demo ledger
 
 The free-check workflow no longer writes generated lockfiles or check reports back to the source branch. It uploads the security report as a workflow artifact, uses read-only repository permissions, and serializes checks per branch with superseded runs cancelled. This avoids the previous concurrent Git push race.
