@@ -109,12 +109,21 @@ function snapshotPolicy(rules: Rules, checks: Check[]): PolicySnapshot {
 }
 
 function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: string) {
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
+  const windowStart = now.getTime() - 24 * 60 * 60 * 1000;
   return desk.proposals.reduce((sum, proposal) => {
     if (proposal.id === excludeProposalId) return sum;
-    const created = Date.parse(proposal.createdAt);
-    const active = proposal.status === "approved" || (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
-    return active && Number.isFinite(created) && created >= start ? sum + proposal.amount : sum;
+    const active = proposal.status === "approved" ||
+      (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
+    if (!active) return sum;
+    // Pending proposals reserve budget from creation; reviewed approvals count from approval time.
+    const committedAt = Date.parse(
+      proposal.status === "needs_review" && proposal.review?.decision === "approved"
+        ? proposal.review.at
+        : proposal.createdAt,
+    );
+    return Number.isFinite(committedAt) && committedAt > windowStart && committedAt <= now.getTime()
+      ? sum + proposal.amount
+      : sum;
   }, 0);
 }
 
@@ -157,6 +166,14 @@ export async function rotateAgentKey(key: string | null) {
     const agentKey = `rd_agent_${desk.id}_${token()}`;
     desk.agentKeyHash = sha(agentKey); desk.agentKeyHint = agentKey.slice(-4);
     return { agentKey };
+  });
+}
+
+export async function rotateOwnerKey(key: string | null) {
+  return mutate(key, "owner", (desk) => {
+    const ownerKey = `rd_owner_${desk.id}_${token()}`;
+    desk.ownerKeyHash = sha(ownerKey);
+    return { ownerKey };
   });
 }
 
