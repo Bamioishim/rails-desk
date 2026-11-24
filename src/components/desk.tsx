@@ -40,13 +40,25 @@ export function useDesk(pollMs = 0) {
       if (!stored) { if (live) setReady(true); return; }
       // One-time migration: exchange the legacy localStorage owner key for an HttpOnly cookie.
       if (stored.ownerKey) {
+        let cookieEstablished = false;
         try {
           await api("/api/v1/session", { method: "POST", body: JSON.stringify({ ownerKey: stored.ownerKey }) });
+          cookieEstablished = true;
           const migrated = { deskId: stored.deskId, agentKey: stored.agentKey };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          } catch (storageError) {
+            // The cookie is already set. Never leave the legacy owner secret behind if
+            // rewriting the record fails; the agent key can remain in memory this session.
+            try { localStorage.removeItem(STORAGE_KEY); } catch { /* storage may be unavailable */ }
+            throw storageError;
+          }
           if (live) setKeys(migrated);
           if (live) await refresh(migrated);
         } catch (e) {
+          if (cookieEstablished) {
+            try { localStorage.removeItem(STORAGE_KEY); } catch { /* storage may be unavailable */ }
+          }
           if (live) {
             setKeys({ deskId: stored.deskId, agentKey: stored.agentKey });
             setError(e instanceof Error ? e.message : "Could not secure the existing owner session.");
