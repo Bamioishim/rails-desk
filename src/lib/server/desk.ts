@@ -121,7 +121,10 @@ function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: s
         ? proposal.review.at
         : proposal.createdAt,
     );
-    return Number.isFinite(committedAt) && committedAt > windowStart && committedAt <= now.getTime()
+    // Pending proposals keep their reservation until approved or refused, even if
+    // the review itself takes longer than 24 hours.
+    const stillPending = proposal.status === "needs_review" && !proposal.review;
+    return stillPending || (Number.isFinite(committedAt) && committedAt > windowStart && committedAt <= now.getTime())
       ? sum + proposal.amount
       : sum;
   }, 0);
