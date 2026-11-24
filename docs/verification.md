@@ -29,13 +29,13 @@ The project owner manually exercised all five Kane browser scenarios against the
 
 This is a **manual 5/5 acceptance result**, reported by the project owner. It is not represented as a successful automated Kane run.
 
-## Latest post-merge automated Kane run and credit limitation
+## Latest inspected automated Kane attempt and credit limitation
 
-GitHub Actions run [#96](https://github.com/Bamioishim/rails-desk/actions/runs/45302945102) ran against main commit `7f287f811182720c541db762ae39933ffca502e7` after PR #8 merged. The five browser scenarios all stopped at the same Kane service response: `Credits exhausted: {"error":"insufficient credits"}`. The report records 0/5 because none of the scenarios could complete; it contains no app-specific failed assertion or expected-versus-actual UI mismatch.
+GitHub Actions run [#97](https://github.com/Bamioishim/rails-desk/actions/runs/45303831180) ran against commit `16bbcf7`. Its attached `KANE_REPORT.md` records **0/5** because all five browser scenarios stopped at the same Kane service response: `Credits exhausted: {"error":"insufficient credits"}`. No scenario reached its application assertions, so this report does not establish that five app flows are broken.
 
-The same run completed `npm ci`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` successfully before the Kane step. The service-credit failure remains an automated gate failure, not an automated application acceptance result.
+The report is an automated gate failure caused by unavailable Kane service credits. It is distinct from the project owner's separately reported manual 5/5 acceptance result above. Do not trigger another paid Kane run until credits are available. Earlier run [#96](https://github.com/Bamioishim/rails-desk/actions/runs/45302945102) is historical and is not the latest inspected Kane attempt.
 
-The project owner separately reported manual acceptance of all five scenarios. That owner-reported manual 5/5 result is recorded above and is not represented as an automated Kane pass. Do not trigger another paid Kane run until credits are available. The earlier [run #92](https://github.com/Bamioishim/rails-desk/actions/runs/45202364063), which completed 4/5, is historical and is superseded by run #96 for the post-merge main commit.
+The current main branch has advanced beyond the commit tested by run #97. Therefore this report is not automated acceptance evidence for the current main HEAD or for the unmerged security branch.
 
 ## Production Redis smoke test
 
