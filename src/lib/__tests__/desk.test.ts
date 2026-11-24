@@ -123,6 +123,24 @@ describe("desk API flow", () => {
     }
   });
 
+  it("keeps pending budget reserved until the owner decides, even after 24 hours", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-23T10:00:00.000Z"));
+      const { ownerKey, agentKey } = await createDesk("Long pending reservation");
+      await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
+      const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Awaiting a delayed review" });
+      expect(pending.status).toBe("needs_review");
+
+      vi.setSystemTime(new Date("2026-11-24T11:00:00.000Z"));
+      const second = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Must not bypass pending reservation" });
+      expect(second.status).toBe("blocked");
+      expect(second.reasons.join(" ")).toContain("Daily spend cap");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("rotates the owner key and invalidates the previous credential", async () => {
     const { ownerKey } = await createDesk("Owner key rotation");
     const { ownerKey: replacement } = await rotateOwnerKey(ownerKey);
