@@ -35,7 +35,15 @@ GitHub Actions run [#97](https://github.com/Bamioishim/rails-desk/actions/runs/4
 
 The report is an automated gate failure caused by unavailable Kane service credits. It is distinct from the project owner's separately reported manual 5/5 acceptance result above. Do not trigger another paid Kane run until credits are available. Earlier run [#96](https://github.com/Bamioishim/rails-desk/actions/runs/45302945102) is historical and is not the latest inspected Kane attempt.
 
-The current main branch has advanced beyond the commit tested by run #97. Therefore this report is not automated acceptance evidence for the current main HEAD or for the unmerged security branch.
+The current main branch has advanced beyond the commit tested by run #97. Therefore that report is not automated acceptance evidence for the current main HEAD or for the unmerged security branch.
+
+## Security branch verification: 24 November 2026
+
+The rolling-cap and owner-session branch is `fix/rolling-daily-cap-owner-security`. Its free-check workflow [run #6](https://github.com/Bamioishim/rails-desk/actions/runs/45382366399) passed unit tests, TypeScript, ESLint, production build, and both npm audit steps against source commit `e155d3f`. The workflow then recorded its evidence and pushed a generated lockfile/docs commit (`8166060`).
+
+The PR Kane run [#100](https://github.com/Bamioishim/rails-desk/actions/runs/45382374664) completed the app build and started all five browser scenarios, but every scenario stopped at the same Kane service error: `Credits exhausted: {"error":"insufficient credits"}`. No app assertion was reached. A subsequent PR run [#101](https://github.com/Bamioishim/rails-desk/actions/runs/45382491077) was marked `action_required` before a job started. Neither is a successful automated browser acceptance result. Do not spend credits or rerun Kane as part of this change.
+
+The branch now also exposes owner-session rotation in the `/rails` UI. The owner rotates the credential through the existing same-origin endpoint; the new credential remains inside the HttpOnly cookie and is never displayed or copied into agent configuration. The spend-cap controls describe the actual rolling 24-hour behavior.
 
 ## Production Redis smoke test
 
