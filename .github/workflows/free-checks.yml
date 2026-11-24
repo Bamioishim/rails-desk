@@ -54,20 +54,20 @@ jobs:
           const prod = JSON.parse(fs.readFileSync('/tmp/npm-audit-production.json', 'utf8'));
           const counts = (a) => a.metadata?.vulnerabilities ?? { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 };
           const findings = Object.entries(full.vulnerabilities ?? {}).map(([name, v]) =>
-            `- \`\${name}\`: \${v.severity}; installed range \${v.range}; direct dependency: \${v.isDirect ? 'yes' : 'no'}`
+            `- \`${name}\`: ${v.severity}; installed range ${v.range}; direct dependency: ${v.isDirect ? 'yes' : 'no'}`
           );
           const f = counts(full), p = counts(prod);
           const lines = [
             '# Free security and quality checks',
             '',
-            `- Source commit: \${process.env.SOURCE_SHA}`,
-            `- Vitest lockfile version: \${lock.packages['node_modules/vitest']?.version ?? 'not found'}`,
+            `- Source commit: ${process.env.SOURCE_SHA}`,
+            `- Vitest lockfile version: ${lock.packages['node_modules/vitest']?.version ?? 'not found'}`,
             '- Unit tests: passed',
             '- TypeScript: passed',
             '- ESLint: passed',
             '- Production build: passed',
-            `- Full npm audit: \${f.total} vulnerabilities (critical \${f.critical}, high \${f.high}, moderate \${f.moderate}, low \${f.low})`,
-            `- Production-only npm audit: \${p.total} vulnerabilities (critical \${p.critical}, high \${p.high}, moderate \${p.moderate}, low \${p.low})`,
+            `- Full npm audit: ${f.total} vulnerabilities (critical ${f.critical}, high ${f.high}, moderate ${f.moderate}, low ${f.low})`,
+            `- Production-only npm audit: ${p.total} vulnerabilities (critical ${p.critical}, high ${p.high}, moderate ${p.moderate}, low ${p.low})`,
             '',
             '## Full audit findings',
             '',
@@ -78,7 +78,7 @@ jobs:
             '',
           ];
           fs.mkdirSync('artifacts', { recursive: true });
-          fs.writeFileSync('artifacts/security-checks.md', lines.join('\\n'));
+          fs.writeFileSync('artifacts/security-checks.md', lines.join('\n'));
           NODE
       - name: Upload free-check evidence
         uses: actions/upload-artifact@v4
