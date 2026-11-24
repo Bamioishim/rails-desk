@@ -20,7 +20,7 @@ style-src unsafe-inline remains because the current UI uses React inline style a
 
 - Owner-only routes authenticate against the HttpOnly cookie (or an explicitly supplied server-side owner bearer credential).
 - Agent credentials can propose and read status, but cannot edit policy or make owner decisions.
-- The daily spend control uses a rolling 24-hour window. Pending proposals reserve budget from creation; approved proposals count from their approval timestamp. Refused proposals release their reservation.
+- The daily spend control uses a rolling 24-hour window. Pending proposals reserve budget from creation and keep that reservation until the owner approves or refuses them, even if review takes longer than 24 hours. Once approved, a reviewed proposal counts from its approval timestamp. Refused proposals release their reservation.
 - The database stores SHA-256 hashes of owner and agent keys, not their plaintext values.
 - Mutations use a per-desk lock and revision compare-and-set when Redis is enabled.
 - Rate limits apply to write routes. CORS is allowlist-based, never wildcard.
