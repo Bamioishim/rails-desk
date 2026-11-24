@@ -1,6 +1,8 @@
 name: Free checks (no Kane)
 
 on:
+  push:
+    branches: [testnet-settlement-rpc-fix]
   workflow_dispatch:
 
 permissions:
