@@ -70,7 +70,7 @@ POST /api/v1/proposals ──► Policy evaluator
 - **Policy engine** checks positive amounts, per-action maximum, a rolling 24-hour spend cap (including pending proposals reserved from creation and reviewed approvals counted from approval time), case-insensitive recipient allowlist, and owner review threshold. Policy snapshots are recorded with decisions.
 - **Owner session** uses a same-site HttpOnly cookie, Secure in production. The `/rails` page includes a self-service owner-session rotation control; the owner credential is never displayed or stored in browser localStorage. The agent key remains separately available to copy into an agent client.
 - **Storage** uses Upstash Redis when configured; local development can use JSON files. On serverless hosting, filesystem fallback is temporary and is not durable.
-- **Receipts** form a SHA-256-linked sequence. Owners can periodically anchor a receipt hash on X Layer testnet with a zero-value self-transaction; the transaction calldata contains the `RDK1` tag and 32-byte hash. This is independently inspectable transaction data, not a contract-based registry.
+- **Receipts** form a SHA-256-linked sequence for real app decisions and settlement records. Simulated walkthrough events are written to a separate SHA-256-linked demo chain and shown alongside app activity without entering the real decision history. Owners can periodically anchor a real receipt hash on X Layer testnet with a zero-value self-transaction; the transaction calldata contains the `RDK1` tag and 32-byte hash. This is independently inspectable transaction data, not a contract-based registry.
 
 ## API
 
@@ -88,7 +88,7 @@ Amounts are credits in the demo. Agent calls use Authorization: Bearer <agent-ke
 | POST | /api/v1/proposals/:id/decision | owner cookie | Approve or refuse a pending proposal |
 | POST | /api/v1/proposals/:id/settlement | owner cookie | Verify and record a mined X Layer testnet transfer for an approved proposal |
 | POST | /api/v1/desk/anchors | owner cookie | Verify and record an X Layer testnet receipt-head anchor |
-| POST | /api/v1/demo/events | owner cookie | Append a clearly labelled simulated demo event |
+| POST | /api/v1/demo/events | owner cookie | Append a simulated event to the separate demo receipt chain |
 
 The app's session endpoint at /api/v1/session is used for one-time migration of existing browser sessions and logout. The owner can rotate the owner credential with POST /api/v1/session/rotate; this invalidates the previous owner key and replaces the current browser cookie. Trusted server-side integrations may still use an owner bearer key where explicitly configured.
 
