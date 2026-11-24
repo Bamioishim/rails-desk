@@ -13,7 +13,7 @@ import { xLayerTestnet } from "./chains";
 export const ANCHOR_TAG = "0x52444b31" as const;
 
 declare global {
-  interface Window { ethereum?: EIP1193Provider & { isOkxWallet?: boolean } ; okxwallet?: EIP1193Provider }
+  interface Window { ethereum?: EIP1193Provider & { isOkxWallet?: boolean } }
 }
 
 const OKX_EVM_CHAIN = `eip155:${xLayerTestnet.id}`;
@@ -37,7 +37,7 @@ async function getOkxConnectUi(): Promise<OkxConnectUi> {
           name: "Rails Desk",
           icon: "https://rails-desk.vercel.app/rails-desk-mark.svg",
         },
-        actionsConfiguration: { modals: "before" },
+        actionsConfiguration: { modals: ["before"] },
         language: "en_US",
         restoreConnection: true,
       }) as unknown as OkxConnectUi
@@ -83,7 +83,8 @@ export async function connectOkxWallet(): Promise<Address> {
 
 export function injectedProvider(): EIP1193Provider | null {
   if (typeof window === "undefined") return null;
-  return activeOkxProvider ?? window.okxwallet ?? window.ethereum ?? null;
+  const okxwallet = (window as Window & { okxwallet?: EIP1193Provider }).okxwallet;
+  return activeOkxProvider ?? okxwallet ?? window.ethereum ?? null;
 }
 
 export const testnetClient = createPublicClient({
