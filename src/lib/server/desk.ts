@@ -229,56 +229,92 @@ export async function recordReceiptHeadAnchor(key: string | null, input: unknown
   }
   const { desk } = await authed(key, "owner");
   if (!verifyDeskChain(desk.receipts).valid) throw new DeskError("The receipt chain failed verification; refusing to anchor it.", 409);
+  if (desk.anchors?.some((item) => item.txHash.toLowerCase() === txHash) || desk.proposals.some((proposal) => proposal.settlement?.txHash.toLowerCase() === txHash)) {
+    throw new DeskError("This transaction is already recorded as a settlement or receipt anchor.", 409);
+  }
   const head = desk.receipts.find((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
   if (!head) throw new DeskError("The supplied receipt head is not part of this desk's current chain.", 409);
   const { verifyXLayerReceiptHeadAnchor } = await import("./xlayer-settlement");
   const verified = await verifyXLayerReceiptHeadAnchor({ txHash: txHash as `0x${string}`, anchor: ("0x" + receiptHash) as `0x${string}` });
+  const verifiedTxHash = verified.txHash.toLowerCase();
   return mutate(key, "owner", (current) => {
     const stillInChain = current.receipts.some((receipt) => receipt.index === receiptIndex && receipt.hash === receiptHash);
     if (!stillInChain) throw new DeskError("The receipt chain changed while the anchor was being verified. Refresh and try again.", 409);
     current.anchors ??= [];
-    if (current.anchors.some((item) => item.txHash.toLowerCase() === txHash || (item.receiptIndex === receiptIndex && item.receiptHash === receiptHash))) throw new DeskError("This receipt head has already been anchored.", 409);
+    if (current.anchors.some((item) => item.txHash.toLowerCase() === verifiedTxHash || (item.receiptIndex === receiptIndex && item.receiptHash === receiptHash))) throw new DeskError("This receipt head has already been anchored.", 409);
+    if (current.proposals.some((proposal) => proposal.settlement?.txHash.toLowerCase() === verifiedTxHash)) throw new DeskError("This transaction is already attached to a settlement.", 409);
     current.anchors.push({ receiptIndex, receiptHash, ...verified });
     current.anchors.sort((a, b) => a.receiptIndex - b.receiptIndex);
-    return current.anchors.find((item) => item.txHash.toLowerCase() === txHash);
+    return current.anchors.find((item) => item.txHash.toLowerCase() === verifiedTxHash);
   });
 }
 
 export async function recordTestnetSettlement(key: string | null, id: string, input: unknown) {
   const body = (input ?? {}) as Record<string, unknown>;
-  const txHash = typeof body.txHash === "string" ? body.txHash : "";
+  const txHash = typeof body.txHash === "string" ? body.txHash.toLowerCase() : "";
   const payTo = typeof body.payTo === "string" ? body.payTo.toLowerCase() : "";
+  const expectedFrom = typeof body.expectedFrom === "string" ? body.expectedFrom.toLowerCase() : "";
   const anchor = typeof body.anchor === "string" ? body.anchor.toLowerCase() : "";
-  if (!/^0x[0-9a-f]{64}$/.test(txHash) || !/^0x[0-9a-f]{40}$/.test(payTo) || !/^0x[0-9a-f]{64}$/.test(anchor)) {
-    throw new DeskError("A valid X Layer testnet transaction hash, recipient address and receipt anchor are required.", 400);
+  if (!/^0x[0-9a-f]{64}$/.test(txHash) || !/^0x[0-9a-f]{40}$/.test(payTo) || !/^0x[0-9a-f]{40}$/.test(expectedFrom) || !/^0x[0-9a-f]{64}$/.test(anchor)) {
+    throw new DeskError("A valid X Layer testnet transaction hash, recipient, reviewed wallet and receipt anchor are required.", 400);
   }
+  if (payTo === expectedFrom) throw new DeskError("The recipient must differ from the sending wallet; a self-transfer is not a settlement.", 400);
   const { desk } = await authed(key, "owner");
   const proposal = desk.proposals.find((p) => p.id === id);
   if (!proposal) throw new DeskError("Proposal not found.", 404);
   const approved = proposal.status === "approved" || (proposal.status === "needs_review" && proposal.review?.decision === "approved");
   if (!approved) throw new DeskError("Only an approved proposal can be settled.", 409);
   if (proposal.settlement) throw new DeskError("This proposal already has a verified settlement.", 409);
-  const originalReceipt = desk.receipts.find((r) => r.id === proposal.receiptIds[0]);
+  if (desk.proposals.some((other) => other.settlement?.txHash.toLowerCase() === txHash) || desk.anchors?.some((item) => item.txHash.toLowerCase() === txHash)) {
+    throw new DeskError("This transaction is already recorded as a settlement or receipt anchor.", 409);
+  }
+  const originalReceipt = desk.receipts.find((receipt) => receipt.id === proposal.receiptIds[0]);
   if (!originalReceipt) throw new DeskError("The proposal's original receipt is missing.", 409);
-  const expectedPayload = { proposalId: proposal.id, receiptHash: originalReceipt.hash, payTo, amount: proposal.amount };
+  const expectedPayload = { proposalId: proposal.id, receiptHash: originalReceipt.hash, payTo, amount: proposal.amount, from: expectedFrom };
   const expectedAnchor = sha(JSON.stringify(expectedPayload));
-  if (anchor !== "0x" + expectedAnchor) throw new DeskError("The supplied anchor does not match this approved proposal and recipient.", 400);
+  if (anchor !== `0x${expectedAnchor}`) throw new DeskError("The supplied anchor does not match this approved proposal and recipient.", 400);
 
   const { verifyXLayerTestnetTransfer } = await import("./xlayer-settlement");
   const approvedAt = proposal.review?.decision === "approved" ? proposal.review.at : proposal.createdAt;
-  const verified = await verifyXLayerTestnetTransfer({ txHash: txHash as `0x${string}`, payTo: payTo as `0x${string}`, amountCredits: proposal.amount, approvedAt, anchor: anchor as `0x${string}` });
+  const approvalSnapshot = JSON.stringify({ status: proposal.status, decision: proposal.review?.decision ?? null, at: proposal.review?.at ?? null });
+  const verified = await verifyXLayerTestnetTransfer({
+    txHash: txHash as `0x${string}`,
+    payTo: payTo as `0x${string}`,
+    expectedFrom: expectedFrom as `0x${string}`,
+    amountCredits: proposal.amount,
+    approvedAt,
+    anchor: anchor as `0x${string}`,
+  });
+  const verifiedTxHash = verified.txHash.toLowerCase();
 
   return mutate(key, "owner", (current) => {
-    const p = current.proposals.find((x) => x.id === id);
-    if (!p) throw new DeskError("Proposal not found.", 404);
-    const stillApproved = p.status === "approved" || (p.status === "needs_review" && p.review?.decision === "approved");
+    const currentProposal = current.proposals.find((item) => item.id === id);
+    if (!currentProposal) throw new DeskError("Proposal not found.", 404);
+    const stillApproved = currentProposal.status === "approved" || (currentProposal.status === "needs_review" && currentProposal.review?.decision === "approved");
     if (!stillApproved) throw new DeskError("The proposal is no longer approved.", 409);
-    if (p.settlement) throw new DeskError("This proposal already has a verified settlement.", 409);
-    if (current.proposals.some((other) => other.id !== id && other.settlement?.txHash.toLowerCase() === txHash)) throw new DeskError("This transaction is already attached to another proposal.", 409);
-    p.settlement = { ...verified, txHash, anchor, verifiedAt: new Date().toISOString() };
-    const receipt = appendReceipt(current, { proposalId: p.id, event: "settled_on_xlayer_testnet", outcome: "approved", amount: p.amount, recipient: p.recipient, detail: `Settled on X Layer testnet. Transaction: ${txHash}`, policySnapshot: p.review?.policySnapshot ?? p.policySnapshot });
-    p.receiptIds.push(receipt.id);
-    return publicProposal(p);
+    const currentApprovalSnapshot = JSON.stringify({ status: currentProposal.status, decision: currentProposal.review?.decision ?? null, at: currentProposal.review?.at ?? null });
+    if (currentApprovalSnapshot !== approvalSnapshot) throw new DeskError("The proposal approval changed while the transaction was being verified. Review and approve it again before retrying.", 409);
+    if (currentProposal.settlement) throw new DeskError("This proposal already has a verified settlement.", 409);
+    if (current.proposals.some((other) => other.settlement?.txHash.toLowerCase() === verifiedTxHash) || current.anchors?.some((item) => item.txHash.toLowerCase() === verifiedTxHash)) {
+      throw new DeskError("This transaction is already recorded as a settlement or receipt anchor.", 409);
+    }
+    const currentOriginalReceipt = current.receipts.find((receipt) => receipt.id === currentProposal.receiptIds[0]);
+    if (!currentOriginalReceipt) throw new DeskError("The proposal's original receipt is missing.", 409);
+    const currentPayload = { proposalId: currentProposal.id, receiptHash: currentOriginalReceipt.hash, payTo, amount: currentProposal.amount, from: expectedFrom };
+    if (`0x${sha(JSON.stringify(currentPayload))}` !== anchor) throw new DeskError("The approved proposal changed while the transaction was being verified.", 409);
+
+    currentProposal.settlement = { ...verified, txHash: verifiedTxHash, anchor, verifiedAt: new Date().toISOString() };
+    const receipt = appendReceipt(current, {
+      proposalId: currentProposal.id,
+      event: "settled_on_xlayer_testnet",
+      outcome: "approved",
+      amount: currentProposal.amount,
+      recipient: currentProposal.recipient,
+      detail: `Settled on X Layer testnet. Transaction: ${verifiedTxHash}`,
+      policySnapshot: currentProposal.review?.policySnapshot ?? currentProposal.policySnapshot,
+    });
+    currentProposal.receiptIds.push(receipt.id);
+    return publicProposal(currentProposal);
   });
 }
 
