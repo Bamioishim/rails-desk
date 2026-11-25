@@ -6,13 +6,14 @@ import { verifyChain } from "@/lib/rails";
 import Link from "next/link";
 import { useDesk } from "@/components/desk";
 
-const outcomeLabel = { approved: "approved", needs_review: "needs your OK", blocked: "blocked", refused: "refused" } as const;
+const outcomeLabel = { approved: "approved", needs_review: "needs your OK", blocked: "blocked", refused: "refused", expired: "expired" } as const;
 const outcomeTag = (o: keyof typeof outcomeLabel) => (o === "approved" ? "tag green" : o === "needs_review" ? "tag neutral" : "tag red");
 const outcomeSummary = (o: keyof typeof outcomeLabel, detail: string, reviewed = false) =>
   reviewed && o === "approved" ? "Approved by you after review."
     : o === "approved" ? "Proposal approved by your rails."
     : o === "needs_review" ? "Proposal needs your approval."
     : o === "refused" ? "Proposal refused by you."
+    : o === "expired" ? "Proposal expired after 24 hours without owner review. It can no longer be approved."
     : detail.toLowerCase().includes("maximum") || detail.toLowerCase().includes("limit")
       ? "Proposal blocked. " + detail
       : "Proposal blocked by your allowed-recipient rules.";
