@@ -202,8 +202,8 @@ function expirePendingProposals(desk: Desk, now = new Date()) {
 }
 
 export function publicDesk(desk: Desk) {
-  const { ownerKeyHash: _o, agentKeyHash: _a, anchors: _legacyAnchors, ...rest } = desk;
-  void _o; void _a; void _legacyAnchors;
+  const { ownerKeyHash: _o, agentKeyHash: _a, ownerSessions: _sessions, anchors: _legacyAnchors, ...rest } = desk;
+  void _o; void _a; void _sessions; void _legacyAnchors;
   const proposals = desk.proposals.map(({ settlement: _legacySettlement, ...proposal }) => {
     void _legacySettlement;
     return proposal;
