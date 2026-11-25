@@ -32,6 +32,8 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 
 ## Current verification
 
+- **API write Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI on 25 November 2026: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). No Kane tests were run. A Vercel Preview deployment reached READY, but Vercel Deployment Protection redirected anonymous smoke checks to its login page.
+
 **Latest merged security checks: PASS**
 
 - **Kane browser acceptance:** 5/5 passed on 25 November 2026. [Workflow run #105](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) · [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703) · [Checked-in per-test evidence](docs/kane-evidence/08-current-main-run-2026-11-25.md).
@@ -41,6 +43,10 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 - **Updated app preview:** [Open the security-hardening build](https://rails-desk-nu2gb3jmb-bamioishim.vercel.app). `/`, `/demo`, `/rails`, and `/receipts` returned HTTP 200. This Preview uses ephemeral storage, not Production Redis. The canonical production URL remains [rails-desk.vercel.app](https://rails-desk.vercel.app); a new Production deployment is pending the Vercel daily deployment quota reset.
 
 The Kane suite covers the documented agent-review, mock approval/execution, blocked wording, demo walkthrough, and landing-page entry flows. It tests the mock/demo product, not live payment settlement. No funds move in Rails Desk. The current run artifact contains the Markdown report and direct per-test Kane links, but no separate screenshot bundle.
+
+**Pending security follow-up**
+
+- **Write-route Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). This follow-up is open for review, not merged. Its Vercel Preview deployment is READY but protected by Vercel login, so anonymous app-route verification remains pending.
 
 See [full verification notes and direct test evidence](docs/verification.md) before treating these checks as proof of production payment execution.
 

@@ -138,6 +138,17 @@ Security hardening PR [#11](https://github.com/Bamioishim/rails-desk/pull/11) wa
 
 The changes are merged into `main` through PR #11. The automated run is test evidence, not production runtime verification.
 
+## General API write Origin guard
+
+PR [#18](https://github.com/Bamioishim/rails-desk/pull/18) adds same-origin or explicitly allowlisted Origin validation to all write routes. Requests without an Origin header remain supported for server-to-server agent clients. The dedicated session routes continue to require an explicit same-origin Origin header and their separate per-IP rate limit.
+
+Free-check run [#45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553) passed on branch `security/write-origin-guard`:
+- 57/57 tests passed.
+- TypeScript, ESLint, full and production dependency audits, and production build passed.
+- No Kane or paid browser tests were run.
+
+Vercel emitted a free-tier deployment-quota failure notice, but a later Preview deployment reached READY at [this URL](https://rails-desk-git-security-write-origin-guard-bamioishim.vercel.app). Anonymous GET checks to `/`, `/rails`, `/receipts`, and `/api/v1/session` redirected to Vercel login (HTTP 302), so app-level behavior and response headers could not be verified without an authenticated Preview session. The PR is open and has not been merged.
+
 ## Revocable owner-session hardening
 
 PR [#16](https://github.com/Bamioishim/rails-desk/pull/16) adds server-validated browser sessions:
@@ -148,3 +159,4 @@ PR [#16](https://github.com/Bamioishim/rails-desk/pull/16) adds server-validated
 - Existing raw owner-key cookies are upgraded to revocable sessions on app startup.
 
 The free-check run [#70](https://github.com/Bamioishim/rails-desk/actions/runs/45700162469) passed 56 tests across 9 files, plus TypeScript, ESLint, dependency audits, and production build. This is automated verification; no live production owner session was used or modified.
+
