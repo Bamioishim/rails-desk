@@ -32,7 +32,7 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 
 ## Current verification
 
-**Latest main-branch checks: PASS**
+**Latest merged security checks: PASS**
 
 - **Kane browser acceptance:** 5/5 passed on 25 November 2026. [Workflow run #105](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) · [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703) · [Checked-in per-test evidence](docs/kane-evidence/08-current-main-run-2026-11-25.md).
 - **Free CI:** dependency installation, full and production dependency audits, unit tests, TypeScript, ESLint, and production build passed in [run #45679177608](https://github.com/Bamioishim/rails-desk/actions/runs/45679177608).
@@ -111,7 +111,10 @@ Amounts are credits in the demo. Agent calls use `Authorization: Bearer <agent-k
 | GET | `/api/v1/desk` | owner cookie | Read rules, proposals, receipts, and receipt-chain verification |
 | PUT | `/api/v1/desk` | owner cookie | Replace policy rules |
 | POST | `/api/v1/desk/agent-key` | owner cookie | Rotate the agent key |
-| POST | `/api/v1/session/rotate` | owner cookie | Rotate the owner session |
+| GET | `/api/v1/session` | owner cookie | Check authentication and upgrade legacy owner cookies |
+| POST | `/api/v1/session` | owner key | Exchange a legacy owner key for a browser session |
+| DELETE | `/api/v1/session` | owner cookie | Revoke the current browser session and log out |
+| POST | `/api/v1/session/rotate` | owner cookie | Rotate the owner key and reissue the current browser session |
 | POST | `/api/v1/proposals` | agent key | Submit a proposal |
 | GET | `/api/v1/proposals/:id` | agent key | Read proposal status |
 | POST | `/api/v1/proposals/:id/decision` | owner cookie | Approve or refuse a pending proposal |
