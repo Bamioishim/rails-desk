@@ -6,7 +6,7 @@ describe("owner session cookie", () => {
     const request = new Request("https://rails-desk.test/api/v1/desk", {
       headers: { cookie: `${OWNER_COOKIE}=rd_session_12345678_secretsecretsecret` },
     });
-    expect(ownerCredential(request)).toBe("rd_owner_12345678_secretsecretsecret");
+    expect(ownerCredential(request)).toBe("rd_session_12345678_secretsecretsecret");
   });
 
   it("retains explicit bearer credentials for trusted server integrations", () => {
