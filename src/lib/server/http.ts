@@ -38,7 +38,7 @@ export function tooMany(r: LimitResult, request?: Request) {
   );
 }
 
-type Scope = "key" | "desk-create";
+type Scope = "key" | "desk-create" | "session";
 /**
  * Rate-limit a write route. "key": per API key (60/min) plus a per-IP backstop (300/min).
  * "desk-create": per IP (20/hour). Returns a 429 Response when over, otherwise null.
@@ -54,4 +54,11 @@ export async function limit(request: Request, scope: Scope): Promise<Response | 
     if (!r.allowed) return tooMany(r, request);
   }
   return null;
+}
+
+/** Browser session mutations require an explicit same-origin Origin header. */
+export function isSameOriginRequest(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try { return new URL(origin).origin === new URL(request.url).origin; } catch { return false; }
 }
