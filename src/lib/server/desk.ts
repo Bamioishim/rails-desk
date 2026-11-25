@@ -69,7 +69,7 @@ async function authed(key: string | null, need: "owner" | "agent" | "any") {
     : k.role === "agent"
       ? equalHash(suppliedHash, desk.agentKeyHash)
       : (desk.ownerSessions ?? []).some((session) => equalHash(suppliedHash, session.hash) && Date.parse(session.expiresAt) > Date.now());
-  if (!ok) throw new DeskError("Invalid or expired owner session.", 401);
+  if (!ok) throw new DeskError(k.role === "session" ? "Invalid or expired owner session." : "Invalid API key.", 401);
   return { desk, role: k.role === "session" ? "owner" as const : k.role, rev };
 }
 
