@@ -3,6 +3,12 @@ name: Production Redis smoke test
 on:
   push:
     branches: [main]
+    paths:
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.ts"
+      - "scripts/verify-production-redis.mjs"
   workflow_dispatch:
 
 permissions:

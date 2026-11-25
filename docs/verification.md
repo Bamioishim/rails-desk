@@ -2,11 +2,11 @@
 
 ## Current production release: 25 November 2026
 
-The X Layer retirement is merged into `main` at commit `7cf6964a7a11ee8ce29d51e246ba1b932c042a2a`.
+The X Layer retirement is merged into `main` at commit `8783e6336c58870e864eaa8c42f7ad4cc9a13807`.
 
 The production Vercel deployment for that exact commit is READY:
 
-- Deployment: [Vercel production deployment](https://vercel.com/bamioishim/rails-desk/AE2dG6ceAtQTEiNR6DrtrgU3KMoP)
+- Deployment: [Vercel production deployment](https://vercel.com/bamioishim/rails-desk/6nkqPG51gmMoAoLfDdTStgDw9GWw)
 - Production domain: [rails-desk.vercel.app](https://rails-desk.vercel.app)
 
 Post-deployment read-only checks:
@@ -30,13 +30,24 @@ GitHub Actions free-check run [#45524905266](https://github.com/Bamioishim/rails
 
 The merged production commit was also built successfully by Vercel and its deployment reached READY. The paid Kane browser suite was not run.
 
+## Production Redis persistence
+
+Production Redis smoke workflow [#45526309628](https://github.com/Bamioishim/rails-desk/actions/runs/45526309628) passed on 25 November 2026 against main commit `8783e6336c58870e864eaa8c42f7ad4cc9a13807`.
+
+- Storage reported: `redis`
+- Fresh read #1 and fresh read #2 returned the same receipt: `rcpt_e12a8b952f51f77664`
+- Both reads verified the receipt chain as valid.
+- Proposal status remained `needs_review`.
+- No owner approval or funds movement occurred.
+
+This smoke test creates an isolated synthetic desk and pending proposal in production Redis. It therefore does write test data; the run above completed successfully. The workflow is now path-filtered to application and dependency changes so documentation-only pushes do not create additional production test records.
+
 ## Production checks not performed
 
-- The authenticated `GET /api/v1/desk` route was not called because no owner session was used.
-- The production Redis read/write smoke test was not rerun. It creates a synthetic desk and proposal, which would mutate production Redis.
+- The authenticated `GET /api/v1/desk` route was not called directly because no owner session was used.
 - No interactive browser acceptance run was performed against production.
 
-A public route returning HTTP 200 confirms that it is served; it does not prove authenticated API behavior, Redis persistence, or full interactive acceptance. The historical Production Redis smoke workflow [run #9](https://github.com/Bamioishim/rails-desk/actions/runs/45302945066) passed on 24 November 2026 against the earlier main commit `7f287f811182720c541db762ae39933ffca502e7`. It is not a fresh persistence test of the current release.
+A public route returning HTTP 200 confirms that it is served; it does not prove authenticated API behavior or full interactive acceptance.
 
 ## Product boundary after X Layer retirement
 
@@ -49,7 +60,7 @@ Older settlement metadata and anchor fields are retained opaquely in existing st
 ## Historical evidence
 
 - The project owner reported a manual 5/5 browser acceptance result on 24 November 2026. One scenario covered the then-existing X Layer testnet settlement flow. That result is historical and does not validate the current decision-only product.
-- Production Redis smoke workflow [run #9](https://github.com/Bamioishim/rails-desk/actions/runs/45302945066) verified a synthetic pending proposal across two independent reads on the earlier release. It did not approve the proposal or move funds.
+- The earlier Production Redis smoke workflow [run #9](https://github.com/Bamioishim/rails-desk/actions/runs/45302945066) passed on 24 November 2026 against main commit `7f287f811182720c541db762ae39933ffca502e7`. It is superseded as the latest persistence check by run #45526309628.
 - The historical free security report in [security-checks.md](security-checks.md) applies only to the source commit recorded in that file.
 - Earlier Kane runs are evidence for their named commits only. They are not a current browser result.
 
