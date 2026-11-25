@@ -28,7 +28,19 @@ GitHub Actions free-check run [#45524905266](https://github.com/Bamioishim/rails
 - Full npm audit: zero vulnerabilities
 - Production-only npm audit: zero vulnerabilities
 
-The merged production commit was also built successfully by Vercel and its deployment reached READY. The paid Kane browser suite was not run.
+The merged production commit was also built successfully by Vercel and its deployment reached READY.
+
+The latest main-branch free-check run [#45679177608](https://github.com/Bamioishim/rails-desk/actions/runs/45679177608) passed on commit `4e8da39745af628bab08b9d59a4b39a40d7a455b` (25 November 2026):
+
+- Dependency installation: passed
+- Full dependency audit: passed
+- Production dependency audit: passed
+- Unit tests: passed
+- TypeScript: passed
+- ESLint: passed
+- Production build: passed
+
+This run validates the free CI checks only. The paid Kane browser suite remains separate and has not yet been run against this commit.
 
 ## Production Redis persistence
 
