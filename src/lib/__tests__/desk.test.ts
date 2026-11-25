@@ -143,19 +143,29 @@ describe("desk API flow", () => {
     }
   });
 
-  it("keeps pending budget reserved until the owner decides, even after 24 hours", async () => {
+  it("expires pending reviews after 24 hours, releases their reservation, and forbids later approval", async () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-11-23T10:00:00.000Z"));
-      const { ownerKey, agentKey } = await createDesk("Long pending reservation");
+      const { ownerKey, agentKey } = await createDesk("Expiring pending reservation");
       await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
-      const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Awaiting a delayed review" });
+      const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Awaiting owner review" });
       expect(pending.status).toBe("needs_review");
 
-      vi.setSystemTime(new Date("2026-11-24T11:00:00.000Z"));
-      const second = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Must not bypass pending reservation" });
-      expect(second.status).toBe("blocked");
-      expect(second.reasons.join(" ")).toContain("Daily spend cap");
+      vi.setSystemTime(new Date("2026-11-24T10:00:01.000Z"));
+      await expect(decide(ownerKey, pending.id, "approve")).rejects.toThrow(/review window expired/);
+      const state = await getDesk(ownerKey);
+      const expired = state.proposals.find((proposal) => proposal.id === pending.id);
+      expect(expired?.expiredAt).toBe("2026-11-24T10:00:01.000Z");
+      expect((await getProposal(agentKey, pending.id)).awaiting_review).toBe(false);
+      expect((await getProposal(agentKey, pending.id)).final_status).toBe("expired");
+      expect(state.pending).toBe(0);
+      expect(state.receipts.at(-1)?.event).toBe("review_expired");
+      expect(state.receipts.at(-1)?.detail).toContain("can no longer be approved");
+      expect(verifyDeskChain(state.receipts).valid).toBe(true);
+
+      const replacement = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Reservation was released" });
+      expect(replacement.status).toBe("needs_review");
     } finally {
       vi.useRealTimers();
     }

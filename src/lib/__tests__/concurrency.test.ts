@@ -85,6 +85,27 @@ describe("concurrent proposals across instances", () => {
     expect(one.desk.verifyDeskChain(state.receipts).valid).toBe(true);
   });
 
+  it("enforces the daily budget under concurrent submissions across server instances", async () => {
+    const one = await instance();
+    const two = await instance();
+    const three = await instance();
+    const { ownerKey, agentKey } = await one.desk.createDesk("concurrent-budget");
+    await one.desk.updateRules(ownerKey, { allowedRecipients: ["Alex"], maxPerAction: 100, reviewLimit: 100, dailySpendCap: 25 });
+    const mods = [one.desk, two.desk, three.desk];
+    const N = 18;
+    const results = await Promise.all(Array.from({ length: N }, (_, i) =>
+      mods[i % mods.length].propose(agentKey, { amount: 10, recipient: "Alex", reason: `budget-race-${i}` })));
+    expect(results.filter((proposal) => proposal.status === "approved")).toHaveLength(2);
+    expect(results.filter((proposal) => proposal.status === "blocked")).toHaveLength(N - 2);
+    const state = await two.desk.getDesk(ownerKey);
+    const committed = state.proposals.filter((proposal) => proposal.status === "approved")
+      .reduce((sum, proposal) => sum + proposal.amount, 0);
+    expect(committed).toBeLessThanOrEqual(25);
+    expect(state.proposals).toHaveLength(N);
+    expect(state.receipts).toHaveLength(N);
+    expect(one.desk.verifyDeskChain(state.receipts).valid).toBe(true);
+  });
+
   it("lets only one of two racing owner decisions win", async () => {
     const one = await instance();
     const two = await instance();
