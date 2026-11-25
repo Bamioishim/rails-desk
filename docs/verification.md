@@ -17,6 +17,20 @@ Post-deployment read-only checks:
 - The four rendered app routes contained no active X Layer wallet, OKX, or testnet settlement UI.
 - Vercel reported no runtime errors in the 30-minute window after deployment.
 
+## Isolated legacy receipt read-only branch
+
+Branch: `fix/legacy-receipts-read-only`
+
+Application changes are isolated from production. The branch disables POST writes to the legacy file-backed receipt endpoint, preserves GET history, and removes unused provider write methods. Existing production records and Redis state have not been modified.
+
+Preview deployment for application commit `a9d8dbfd54e3cf555c7ed04b2fd093261ae37263`:
+- Vercel deployment reached READY.
+- Production build compiled successfully.
+- TypeScript completed successfully during the Next.js build.
+- Preview `GET /api/receipts` returned HTTP 200 with a valid empty history and `Cache-Control: no-store`.
+
+The full Vitest suite, standalone ESLint run, and npm audits are pending a GitHub Actions run on this branch. No Kane browser suite has been run; no paid credits have been used. No production deployment or merge has been authorized.
+
 ## Automated checks
 
 GitHub Actions free-check run [#45524905266](https://github.com/Bamioishim/rails-desk/actions/runs/45524905266) passed on PR head commit `983cd77a058de9e3c86f4e5a115608bad6a82492`:
