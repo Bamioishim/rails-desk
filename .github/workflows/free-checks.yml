@@ -5,6 +5,7 @@ on:
     branches: [main, fix/legacy-receipts-read-only]
     paths-ignore:
       - ".github/workflows/free-checks.yml"
+      - "docs/verification.md"
   workflow_dispatch:
 
 concurrency:
