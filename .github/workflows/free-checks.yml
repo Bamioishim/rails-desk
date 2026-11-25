@@ -2,7 +2,7 @@ name: Free checks (no Kane)
 
 on:
   push:
-    branches: [main, owner-session-hardening]
+    branches: [main]
     paths-ignore:
       - ".github/workflows/free-checks.yml"
   workflow_dispatch:
