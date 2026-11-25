@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 
 export type DeskRules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number; dailySpendCap: number };
 export type DeskPolicySnapshot = { rules: DeskRules; checks: { rule: string; passed: boolean; detail: string }[] };
-export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked"; reasons: string[]; policy_snapshot?: DeskPolicySnapshot | null; review: null | { decision: "approved" | "refused"; at: string; policySnapshot?: DeskPolicySnapshot }; receiptIds: string[] };
-export type DeskReceipt = { index: number; id: string; at: string; proposalId: string; event: string; source?: "app" | "demo"; outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string; policySnapshot?: DeskPolicySnapshot; previousHash: string; hash: string };
+export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked" | "expired"; reasons: string[]; policy_snapshot?: DeskPolicySnapshot | null; review: null | { decision: "approved" | "refused" | "expired"; at: string; policySnapshot?: DeskPolicySnapshot }; receiptIds: string[] };
+export type DeskReceipt = { index: number; id: string; at: string; proposalId: string; event: string; source?: "app" | "demo"; outcome: "approved" | "needs_review" | "blocked" | "refused" | "expired"; amount: number; recipient: string; detail: string; policySnapshot?: DeskPolicySnapshot; previousHash: string; hash: string };
 export type DeskState = { id: string; name: string; rules: DeskRules; proposals: DeskProposal[]; receipts: DeskReceipt[]; demoReceipts?: DeskReceipt[]; demoVerification?: { valid: boolean; brokenAt: number | null }; storage: "redis" | "file" | "ephemeral"; pending: number; agentKeyHint: string; verification: { valid: boolean; brokenAt: number | null } };
 type Keys = { deskId: string; agentKey: string; ownerKey?: string };
 
