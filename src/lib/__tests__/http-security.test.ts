@@ -28,6 +28,27 @@ describe("CORS", () => {
     expect(corsHeaders(req({ origin: "https://c.example" }))).toEqual({});
   });
 
+  it("blocks untrusted browser origins on write routes but allows same-origin and configured origins", async () => {
+    const evil = new Request("https://rails-desk.test/api/v1/desk", {
+      method: "POST",
+      headers: { origin: "https://evil.example" },
+    });
+    await expect(limit(evil, "key")).rejects.toThrow(/Cross-origin write request blocked/);
+
+    const same = new Request("https://rails-desk.test/api/v1/desk", {
+      method: "POST",
+      headers: { origin: "https://rails-desk.test" },
+    });
+    expect(await limit(same, "key")).toBeNull();
+
+    process.env.RAILS_DESK_ALLOWED_ORIGINS = "https://trusted.example";
+    const trusted = new Request("https://rails-desk.test/api/v1/desk", {
+      method: "POST",
+      headers: { origin: "https://trusted.example" },
+    });
+    expect(await limit(trusted, "key")).toBeNull();
+  });
+
   it("server-to-server calls (no Origin header) still get a normal response", async () => {
     const res = ok({ hello: 1 }, 201, req({ authorization: "Bearer x" }));
     expect(res.status).toBe(201);
