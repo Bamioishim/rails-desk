@@ -5,10 +5,11 @@ import { useStore } from "@/components/store";
 import { useDesk } from "@/components/desk";
 
 const code: React.CSSProperties = { fontSize: 10, lineHeight: 1.6, whiteSpace: "pre-wrap", padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 10, margin: "8px 0 4px" };
-const label = (s: string) => (s === "approved" ? "Approved" : s === "needs_review" ? "Needs your approval" : s === "blocked" ? "Blocked" : s === "refused" ? "Refused" : s);
+const label = (s: string) => (s === "approved" ? "Approved" : s === "needs_review" ? "Needs your approval" : s === "blocked" ? "Blocked" : s === "refused" ? "Refused" : s === "expired" ? "Expired" : s);
 const decisionMessage = (recipient: string, status: string, reasons: string[] = []) => {
   if (status === "approved") return `Transfer approved. ${recipient} is within your limits.`;
   if (status === "refused") return `Transfer refused. You declined this proposal.`;
+  if (status === "expired") return `Proposal expired after 24 hours without your review. It can no longer be approved.`;
   if (status === "needs_review") return `Transfer needs your approval. Above your review limit.`;
   const reason = reasons.find((x) => !x.startsWith("Not reached")) || "";
   const plainReason = /over the .*maximum|over .*maximum/i.test(reason) ? "Above your per-payment limit." : /not on the allowed list/i.test(reason) ? "Recipient isn't on your allowed list." : "The amount is invalid.";
