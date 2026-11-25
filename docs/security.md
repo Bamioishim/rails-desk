@@ -2,18 +2,17 @@
 
 ## Owner authentication
 
-The browser-facing owner credential is stored in the `rails_desk_owner` cookie with HttpOnly, SameSite=Strict, Path=/, a 30-day expiry, and Secure in production. Client-side JavaScript cannot read it. Owner-only browser actions use same-origin requests and the cookie; the agent key remains separately available to copy into an MCP client or other agent.
+The browser-facing owner credential is an opaque random session token in the `rails_desk_owner` cookie with HttpOnly, SameSite=Strict, Path=/, a 30-day expiry, and Secure in production. The token is generated independently of the owner API key. Only its SHA-256 hash, creation time, and expiry are stored in the desk record; the raw session token is never persisted. Client-side JavaScript cannot read it. Up to ten active browser sessions are retained per desk, with expired sessions pruned when a new one is issued.
 
-Existing browsers with the former `rails-desk-keys-v1` localStorage record are migrated once: the client exchanges the legacy owner key with `POST /api/v1/session`, then rewrites localStorage with only the desk ID and agent key. The server validates the key before setting the cookie. Once the cookie has been established, the client removes the legacy record even if rewriting the reduced record fails. Logging out clears the cookie and removes the local browser record.
+Existing browsers with the former `rails-desk-keys-v1` localStorage record are migrated once: the client exchanges the legacy owner key with `POST /api/v1/session`, then rewrites localStorage with only the desk ID and agent key. The server validates the owner key, creates a revocable session, and sets the HttpOnly cookie. Once the cookie has been established, the client removes the legacy record even if rewriting the reduced record fails. Logging out calls `DELETE /api/v1/session`, revokes that exact session hash server-side, and clears the cookie. A copied cookie stops authenticating after logout.
 
-**Known limitation:** the current cookie contains the raw owner API key, not a revocable session ID. Logout clears only the current browser cookie; a copied cookie remains valid until its 30-day expiry or owner-key rotation. Server-side per-session revocation is not implemented yet. Do not describe logout as revoking a copied credential.
+Session exchange, logout, and owner-session rotation require an explicit `Origin` header matching the request URL's origin. Missing, malformed, and cross-origin values are rejected. These mutations also use a dedicated per-IP rate limit of 10 requests per minute by default (`RAILS_DESK_RATE_SESSIONS_PER_IP_PER_MIN` can tune it). The standard write-route limits remain separate.
 
-`POST /api/v1/session/rotate` lets an authenticated owner rotate the owner credential. The server replaces the stored key hash and sets a new HttpOnly cookie in the same response; the previous owner key is immediately invalidated. Trusted server-side integrations using a separately stored owner bearer key must update that credential as well.
+`POST /api/v1/session/rotate` rotates the underlying owner API key, revokes all existing browser sessions, and issues a fresh session to the current browser in the same flow. The previous owner key and every previous browser session are invalidated. Trusted server-side integrations using a separately stored owner bearer key must update that credential as well.
 
 Trusted server-side integrations can continue to send an owner bearer key explicitly. Never expose that key to an agent.
 
-`POST /api/v1/session` currently validates the submitted owner key but has no explicit Origin validation or dedicated rate-limit call. SameSite=Strict helps prevent cross-site cookie sending, but explicit Origin validation and rate limiting remain required hardening work.
-
+Session hashes live in the desk record, so they inherit the configured desk-storage durability. Production Redis keeps sessions shared across server instances; Preview without Redis uses ephemeral storage and does not provide durable cross-instance sessions.
 ## Content Security Policy
 
 `src/proxy.ts` creates a per-request nonce and passes the CSP to Next.js in both request and response headers. Production `script-src` uses the nonce and strict-dynamic; it does not permit unsafe-inline or unsafe-eval. The connection policy is restricted to the app's own origin. Objects and framing are blocked, and form actions and base URLs are restricted. The matcher applies to application routes while excluding Next static/image assets and the favicon.
