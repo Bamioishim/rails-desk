@@ -12,7 +12,9 @@ The consolidated free-check workflow [#70](https://github.com/Bamioishim/rails-d
 - Full and production dependency audit steps completed.
 - No paid Kane browser suite was invoked.
 
-The production domain remains [rails-desk.vercel.app](https://rails-desk.vercel.app). The deployment for the new merged main commit must reach Vercel `READY` and be checked separately; a successful CI build is not evidence that the production deployment has completed.
+The canonical production domain remains [rails-desk.vercel.app](https://rails-desk.vercel.app). A Vercel Preview build containing the same application hardening is [available here](https://rails-desk-nu2gb3jmb-bamioishim.vercel.app); `/`, `/demo`, `/rails`, and `/receipts` returned HTTP 200. This Preview uses ephemeral Preview storage and does not use Production Redis.
+
+A new Production deployment for the merged main commit was requested but Vercel rejected it because the account reached its 100-deployments-per-day API limit (HTTP 402; retry after 24 hours). Therefore the production alias has **not** been updated to the merged code yet. Do not treat the Preview URL as the production deployment. The production redeploy remains pending the quota reset.
 
 ## Previous production release baseline: 25 November 2026
 
