@@ -50,15 +50,15 @@ The manual Kane Gate workflow [#105 / run #45680518665](https://github.com/Bamio
 - The gate's preceding dependency installation, unit tests, TypeScript check, ESLint, and production build also passed.
 - The uploaded [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703) contains `KANE_REPORT.md` with the test outcomes and individual Kane run links.
 
-| Browser scenario | Result |
-|---|---|
-| User sets rules, agent proposes, user approves | Passed |
-| Valid demo proposal waits for approval, then mock execution | Passed |
-| Blocked payment uses “Blocked” wording throughout | Passed |
-| Demo walkthrough runs all three outcomes and narrates them | Passed |
-| Landing page opens the demo and the app | Passed |
+| Browser scenario | Result | Direct Kane evidence |
+|---|---|---|
+| User sets rules, agent proposes, user approves | Passed | [Open test run](https://test-manager.lambdatest.com/projects/01M7RFY3EPQVJHTWV91XM2E24C/test-cases/01M8A16Y4MSW1G0VH5E9YMZ1V8/dashboard/share/US_S5RE4T00XFJYCAUNMUZZZCB5T4SUNFX40M84EZ3YEKI3IH0VT2VUN1RDPA3V1XDF?type=summary&agentView=true&fqdn=summary-page) |
+| Valid demo proposal waits for approval, then mock execution | Passed | [Open test run](https://test-manager.lambdatest.com/projects/01M7RFY3EPQVJHTWV91XM2E24C/test-cases/01M8A1EVTXDVDARYGKAR918HKH/dashboard/share/US_47GY8FDR12OH3JK4GGTTOEVB3CR25YNENFJPRQBICPXCWWSZJH6O78BJ5NN8DRU0?type=summary&agentView=true&fqdn=summary-page) |
+| Blocked payment uses “Blocked” wording throughout | Passed | [Open test run](https://test-manager.lambdatest.com/projects/01M7RFY3EPQVJHTWV91XM2E24C/test-cases/01M8A1JJ8HDX9YHS8098AMC8PD/dashboard/share/US_3YAVMP4B6MRIB215RLK4W5N4FPJOVCN6AV3JFNWFQB17KTQTRJDSQSEMR8073DMN?type=summary&agentView=true&fqdn=summary-page) |
+| Demo walkthrough runs all three outcomes and narrates them | Passed | [Open test run](https://test-manager.lambdatest.com/projects/01M7RFY3EPQVJHTWV91XM2E24C/test-cases/01M8A1MEFJ726737ES452EYEWX/dashboard/share/US_0SZKQB8PWTILZ7Y4HQL6WU10QPR5ZBE5Y4XP6AM7QBVNGG59WB9LEXLK6FIFJMVL?type=summary&agentView=true&fqdn=summary-page) |
+| Landing page opens the demo and the app | Passed | [Open test run](https://test-manager.lambdatest.com/projects/01M7RFY3EPQVJHTWV91XM2E24C/test-cases/01M8A1RZBHMBNZZZS4VD78R1J0/dashboard/share/US_RW5UHURFDLQLTZX3QXQPJZG6SLX8WDQORAPQRP28221QQI639IOE9XKBPETSNIWC?type=summary&agentView=true&fqdn=summary-page) |
 
-The uploaded workflow artifact contains the Markdown report only. The individual Kane dashboard links in that report are the available per-test evidence; this workflow did not upload a separate screenshot bundle. This is browser acceptance of the documented mock/demo flows, not a live payment or settlement test.
+The uploaded workflow artifact contains `KANE_REPORT.md` with the five passing outcomes and these individual Kane dashboard links. It does **not** contain a separate screenshot bundle. This is browser acceptance of the documented mock/demo flows, not a live payment or settlement test.
 
 ## Production Redis persistence
 
