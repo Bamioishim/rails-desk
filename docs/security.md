@@ -12,7 +12,9 @@ Trusted server-side integrations can continue to send an owner bearer key explic
 
 ## Content Security Policy
 
-`src/proxy.ts` creates a per-request nonce and passes the CSP to Next.js in both request and response headers. Production `script-src` uses the nonce and strict-dynamic; it does not permit unsafe-inline or unsafe-eval. The connection policy is restricted to the app's own origin. Objects and framing are blocked, and form actions and base URLs are restricted.
+`src/proxy.ts` creates a per-request nonce and passes the CSP to Next.js in both request and response headers. Production `script-src` uses the nonce and strict-dynamic; it does not permit unsafe-inline or unsafe-eval. The connection policy is restricted to the app's own origin. Objects and framing are blocked, and form actions and base URLs are restricted. The matcher applies to application routes while excluding Next static/image assets and the favicon.
+
+A read-only live header audit on 25 November 2026 checked `/`, `/rails`, `/receipts`, unauthenticated `GET /api/v1/desk` (401), `GET /api/v1/proposals` (405), and a nonexistent path (404). All six responses included CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and the restrictive Permissions-Policy. The HTML routes also returned HSTS and COOP. [Audit run](https://agent.tinyfish.ai/runs/d11e2d3d-f7fd-4d8e-a6ca-a0593967e27d).
 
 `style-src unsafe-inline` remains because the current UI uses React inline style attributes. This is a separate CSS allowance; it does not permit inline JavaScript. Removing it requires converting those style attributes to classes or another nonce-compatible approach.
 
@@ -35,6 +37,6 @@ Vercel's environment metadata currently reports a `readable-secret` security fin
 ## Operational notes
 
 - Keep `LT_USERNAME` and `LT_ACCESS_KEY` in GitHub Actions secrets or a gitignored local `.env`. Never commit them.
-- Redis environment variables must be configured separately for each Vercel environment that needs durable storage.
+- Redis environment variables must be configured separately for each Vercel environment that needs durable storage. As of the 25 November 2026 configuration audit, Production has Upstash URL/token variables, while Preview has neither and therefore uses ephemeral storage; no shared Production/Preview Redis database was found. No separate Preview Redis instance is currently configured.
 - The production persistence smoke test creates a synthetic desk and proposal. It changes production Redis data, so obtain explicit owner approval before running it.
 - Rails Desk does not connect wallets, sign transactions, broadcast transactions, or call blockchain RPC services.
