@@ -9,7 +9,7 @@ export function ownerCredential(request: Request): string | null {
   return request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || null;
 }
 
-export function ownerCookie(ownerKey: string, maxAge = 60 * 60 * 24 * 30): string {
+export function ownerCookie(sessionId: string, maxAge = 60 * 60 * 24 * 30): string {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  return `${OWNER_COOKIE}=${encodeURIComponent(ownerKey)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure}`;
+  return `${OWNER_COOKIE}=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure}`;
 }
