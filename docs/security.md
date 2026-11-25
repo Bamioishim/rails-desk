@@ -6,9 +6,13 @@ The browser-facing owner credential is stored in the `rails_desk_owner` cookie w
 
 Existing browsers with the former `rails-desk-keys-v1` localStorage record are migrated once: the client exchanges the legacy owner key with `POST /api/v1/session`, then rewrites localStorage with only the desk ID and agent key. The server validates the key before setting the cookie. Once the cookie has been established, the client removes the legacy record even if rewriting the reduced record fails. Logging out clears the cookie and removes the local browser record.
 
+**Known limitation:** the current cookie contains the raw owner API key, not a revocable session ID. Logout clears only the current browser cookie; a copied cookie remains valid until its 30-day expiry or owner-key rotation. Server-side per-session revocation is not implemented yet. Do not describe logout as revoking a copied credential.
+
 `POST /api/v1/session/rotate` lets an authenticated owner rotate the owner credential. The server replaces the stored key hash and sets a new HttpOnly cookie in the same response; the previous owner key is immediately invalidated. Trusted server-side integrations using a separately stored owner bearer key must update that credential as well.
 
 Trusted server-side integrations can continue to send an owner bearer key explicitly. Never expose that key to an agent.
+
+`POST /api/v1/session` currently validates the submitted owner key but has no explicit Origin validation or dedicated rate-limit call. SameSite=Strict helps prevent cross-site cookie sending, but explicit Origin validation and rate limiting remain required hardening work.
 
 ## Content Security Policy
 
