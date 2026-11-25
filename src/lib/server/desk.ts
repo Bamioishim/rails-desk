@@ -24,6 +24,7 @@ export type DeskReceipt = {
 type Desk = {
   version: 1; id: string; name: string; createdAt: string;
   ownerKeyHash: string; agentKeyHash: string; agentKeyHint: string;
+  ownerSessions?: { hash: string; expiresAt: string }[];
   rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; demoReceipts?: DeskReceipt[];
   /** Opaque legacy data retained in storage; never exposed or acted on. */
   anchors?: unknown[];
@@ -46,9 +47,9 @@ function equalHash(a: string, b: string) {
 
 /** Keys look like rd_owner_<deskId>_<secret> and rd_agent_<deskId>_<secret>. Only hashes are stored. */
 function parseKey(key: string | null) {
-  const m = key?.match(/^rd_(owner|agent)_([a-z0-9]{8,40})_([A-Za-z0-9_-]{20,})$/);
+  const m = key?.match(/^rd_(owner|agent|session)_([a-z0-9]{8,40})_([A-Za-z0-9_-]{20,})$/);
   if (!m) throw new DeskError("Missing or malformed API key. Send Authorization: Bearer <key>.", 401);
-  return { role: m[1] as "owner" | "agent", deskId: m[2], key: key! };
+  return { role: m[1] as "owner" | "agent" | "session", deskId: m[2], key: key! };
 }
 export function bearer(request: Request) { return request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ?? null; }
 
@@ -59,11 +60,17 @@ async function load(deskId: string): Promise<{ desk: Desk; rev: string }> {
 }
 async function authed(key: string | null, need: "owner" | "agent" | "any") {
   const k = parseKey(key);
-  if (need === "owner" && k.role !== "owner") throw new DeskError("This action needs the owner key, not the agent key.", 403);
+  if (need === "owner" && k.role === "agent") throw new DeskError("This action needs an owner session or owner key, not the agent key.", 403);
+  if (need === "agent" && k.role !== "agent") throw new DeskError("This action needs the agent key.", 403);
   const { desk, rev } = await load(k.deskId);
-  const ok = equalHash(sha(k.key), k.role === "owner" ? desk.ownerKeyHash : desk.agentKeyHash);
-  if (!ok) throw new DeskError("Invalid API key.", 401);
-  return { desk, role: k.role, rev };
+  const suppliedHash = sha(k.key);
+  const ok = k.role === "owner"
+    ? equalHash(suppliedHash, desk.ownerKeyHash)
+    : k.role === "agent"
+      ? equalHash(suppliedHash, desk.agentKeyHash)
+      : (desk.ownerSessions ?? []).some((session) => equalHash(suppliedHash, session.hash) && Date.parse(session.expiresAt) > Date.now());
+  if (!ok) throw new DeskError("Invalid or expired owner session.", 401);
+  return { desk, role: k.role === "session" ? "owner" as const : k.role, rev };
 }
 
 /**
@@ -206,8 +213,8 @@ function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | 
 }
 
 export function publicDesk(desk: Desk) {
-  const { ownerKeyHash: _o, agentKeyHash: _a, anchors: _legacyAnchors, ...rest } = desk;
-  void _o; void _a; void _legacyAnchors;
+  const { ownerKeyHash: _o, agentKeyHash: _a, ownerSessions: _sessions, anchors: _legacyAnchors, ...rest } = desk;
+  void _o; void _a; void _sessions; void _legacyAnchors;
   const proposals = desk.proposals.map(({ settlement: _legacySettlement, ...proposal }) => {
     void _legacySettlement;
     if (isExpiredPending(proposal)) {
@@ -229,10 +236,11 @@ export function publicProposal(p: Proposal) {
 export async function createDesk(name?: string) {
   const id = randomBytes(8).toString("hex");
   const ownerKey = `rd_owner_${id}_${token()}`;
+  const ownerSession = `rd_session_${id}_${token()}`;
   const agentKey = `rd_agent_${id}_${token()}`;
-  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), rules: DEFAULT_RULES, proposals: [], receipts: [], demoReceipts: [] };
+  const desk: Desk = { version: 1, id, name: (name || "My desk").slice(0, 60), createdAt: new Date().toISOString(), ownerKeyHash: sha(ownerKey), agentKeyHash: sha(agentKey), agentKeyHint: agentKey.slice(-4), ownerSessions: [{ hash: sha(ownerSession), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() }], rules: DEFAULT_RULES, proposals: [], receipts: [], demoReceipts: [] };
   await saveRaw(id, JSON.stringify(desk));
-  return { desk: publicDesk(desk), ownerKey, agentKey };
+  return { desk: publicDesk(desk), ownerKey, ownerSession, agentKey };
 }
 
 export async function getDesk(key: string | null) { const { desk } = await authed(key, "owner"); return publicDesk(desk); }
@@ -254,6 +262,46 @@ export async function rotateOwnerKey(key: string | null) {
     const ownerKey = `rd_owner_${desk.id}_${token()}`;
     desk.ownerKeyHash = sha(ownerKey);
     return { ownerKey };
+  });
+}
+
+const OWNER_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+function addOwnerSession(desk: Desk) {
+  const sessionKey = `rd_session_${desk.id}_${token()}`;
+  const sessions = (desk.ownerSessions ?? []).filter((session) => Date.parse(session.expiresAt) > Date.now());
+  sessions.push({ hash: sha(sessionKey), expiresAt: new Date(Date.now() + OWNER_SESSION_TTL_MS).toISOString() });
+  desk.ownerSessions = sessions.slice(-10);
+  return sessionKey;
+}
+
+export async function createOwnerSession(ownerKey: string) {
+  return mutate(ownerKey, "owner", (desk) => ({ sessionKey: addOwnerSession(desk) }));
+}
+
+/** Revoke only the presented browser session. Legacy owner-key cookies are invalidated on logout. */
+export async function revokeOwnerSession(key: string | null) {
+  if (!key) return;
+  const parsed = parseKey(key);
+  if (parsed.role === "session") {
+    await mutate(key, "owner", (desk) => {
+      const hash = sha(key);
+      desk.ownerSessions = (desk.ownerSessions ?? []).filter((session) => !equalHash(session.hash, hash));
+      return true;
+    });
+    return;
+  }
+  if (parsed.role === "owner") await rotateOwnerKey(key);
+}
+
+/** Replace this browser session without rotating the long-lived owner integration key. */
+export async function rotateOwnerSession(key: string | null) {
+  return mutate(key, "owner", (desk) => {
+    const parsed = parseKey(key);
+    if (parsed.role === "session") {
+      const hash = sha(key!);
+      desk.ownerSessions = (desk.ownerSessions ?? []).filter((session) => !equalHash(session.hash, hash));
+    }
+    return { sessionKey: addOwnerSession(desk) };
   });
 }
 
