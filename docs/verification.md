@@ -108,3 +108,16 @@ npm run build
 ```
 
 The paid Kane gate is separate and manual. Run it only with explicit owner approval and available credits. A skipped or unavailable Kane run is not a pass. The current approved run and its 5/5 result are recorded above.
+
+
+## Pending-review expiry and concurrent budget checks
+
+Security hardening PR [#11](https://github.com/Bamioishim/rails-desk/pull/11) was tested on branch `security-expiry-budget-guards` in free CI run [#45693392180](https://github.com/Bamioishim/rails-desk/actions/runs/45693392180) on 25 November 2026.
+
+- Unit tests passed, including the new 24-hour pending-review expiry test.
+- Expired proposals receive a `review_expired` receipt, are removed from the pending queue, release their budget reservation, and cannot be approved afterward.
+- Concurrent submissions across three simulated server instances were tested against a daily spend cap; only the two proposals within the cap were accepted.
+- Existing cross-instance receipt-chain and concurrent owner-decision tests passed.
+- TypeScript, ESLint, and production build passed.
+
+The branch remains in an open pull request and has not been merged or deployed. This is automated test evidence, not production runtime verification.
