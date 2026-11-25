@@ -38,10 +38,11 @@ Free GitHub Actions run [#45631383244](https://github.com/Bamioishim/rails-desk/
 - Full npm audit: zero vulnerabilities.
 - Production-only npm audit: zero vulnerabilities.
 - Vitest lockfile version: `4.1.12`.
+- Machine-readable check artifact: [free-security-checks artifact](https://github.com/Bamioishim/rails-desk/actions/runs/45631383244/artifacts/15031505401).
 
 The new `src/app/api/v1/__tests__/workflow.test.ts` test exercises desk creation, owner policy setup, an agent proposal that needs review, rejection of an agent's attempt to approve, owner approval, final proposal status, and a valid two-entry receipt chain. This is an API-level integration test. It ends at the verified owner decision because the current product is decision-only: it does not execute payments or move funds.
 
-The paid Kane browser suite was not invoked; no paid credits were used. The historical 5/5 Kane report on commit `87cae1c` is not evidence for this branch. No current-branch Kane screenshots are available. No production deployment or merge has been authorized.
+The paid Kane browser suite was not invoked; no paid credits were used. The historical 5/5 Kane report on commit `87cae1c` is not evidence for this branch. No current-branch Kane screenshots are available. A browser-based runtime POST probe was attempted against the preview but Vercel Deployment Protection redirected the unauthenticated browser to login, so no POST was sent; the endpoint's 405 behavior is covered by the passing route unit test. No production deployment or merge has been authorized.
 
 
 ## Automated checks
