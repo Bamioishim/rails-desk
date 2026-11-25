@@ -50,7 +50,7 @@ export async function limit(request: Request, scope: Scope): Promise<Response | 
     ? [[LIMITS.desksPerIp(), ip]]
     : scope === "session"
       ? [[LIMITS.sessionPerIp(), ip]]
-      : [[LIMITS.perIp(), ip], [LIMITS.perKey(), request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim() || `anon:${ip}`]];
+      : [[LIMITS.perIp(), ip], [LIMITS.perKey(), request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || `anon:${ip}`]];
   for (const [l, id] of checks) {
     const r = await hit(l, id);
     if (!r.allowed) return tooMany(r, request);
