@@ -171,7 +171,7 @@ describe("desk API flow", () => {
     }
   });
 
-  it("keeps pending budget reserved until the owner decides, even after 24 hours", async () => {
+  it("keeps pending budget reserved until the 24-hour expiry boundary", async () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-11-23T10:00:00.000Z"));
@@ -180,10 +180,11 @@ describe("desk API flow", () => {
       const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Awaiting a delayed review" });
       expect(pending.status).toBe("needs_review");
 
-      vi.setSystemTime(new Date("2026-11-24T11:00:00.000Z"));
-      const second = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Must not bypass pending reservation" });
+      vi.setSystemTime(new Date("2026-11-24T09:59:59.000Z"));
+      const second = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Must not bypass pending reservation before expiry" });
       expect(second.status).toBe("blocked");
       expect(second.reasons.join(" ")).toContain("Daily spend cap");
+      expect((await getProposal(agentKey, pending.id)).awaiting_review).toBe(true);
     } finally {
       vi.useRealTimers();
     }
