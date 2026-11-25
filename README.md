@@ -20,7 +20,7 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 
 **Latest main-branch checks: PASS**
 
-- **Kane browser acceptance:** 5/5 passed on 25 November 2026. [Workflow run #105](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) · [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703).
+- **Kane browser acceptance:** 5/5 passed on 25 November 2026. [Workflow run #105](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) · [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703). · [Checked-in per-test evidence](docs/kane-evidence/08-current-main-run-2026-11-25.md).
 - **Free CI:** dependency installation, full and production dependency audits, unit tests, TypeScript, ESLint, and production build passed in [run #45679177608](https://github.com/Bamioishim/rails-desk/actions/runs/45679177608).
 - **Production Redis smoke:** passed in [run #45526309628](https://github.com/Bamioishim/rails-desk/actions/runs/45526309628).
 
