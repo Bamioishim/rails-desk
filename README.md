@@ -95,7 +95,7 @@ POST /api/v1/proposals ──► Policy evaluator
 ```
 
 - **Next.js App Router** serves the web app and JSON API.
-- **Policy engine** checks positive amounts, per-action maximum, a rolling 24-hour spend cap (including pending proposals reserved from creation and reviewed approvals counted from approval time), case-insensitive recipient allowlist, and owner-review threshold. Policy snapshots are recorded with decisions.
+- **Policy engine** checks positive amounts, per-action maximum, a rolling 24-hour spend cap (including pending proposals reserved from creation and expiring after 24 hours, with reviewed approvals counted from approval time), case-insensitive recipient allowlist, and owner-review threshold. Policy snapshots are recorded with decisions.
 - **Owner session** uses a same-site HttpOnly cookie, Secure in production. The `/rails` page includes a self-service owner-session rotation control. The browser holds a revocable 30-day session ID in an HttpOnly cookie; logout revokes it server-side. The long-lived owner bearer key is not displayed or stored in browser localStorage. The agent key remains separately available to copy into an agent client.
 - **Storage** uses Upstash Redis when configured; local development can use JSON files. On serverless hosting, filesystem fallback is temporary and is not durable.
 - **Receipts** form a SHA-256-linked sequence for app decisions. Simulated walkthrough events use a separate SHA-256-linked demo chain. These are application-level integrity checks, not public blockchain anchors or proof against a privileged server operator.
