@@ -36,7 +36,7 @@ A read-only live header audit on 25 November 2026 checked `/`, `/rails`, `/recei
 
 ## Production configuration follow-up
 
-Vercel's environment metadata currently reports a `readable-secret` security finding for the configured Upstash Redis token variable. The variable values were not decrypted, copied, or written to the repository. Before treating production secret handling as fully hardened, rotate the Upstash REST token and store the replacement using Vercel's sensitive/encrypted environment-variable setting for the required environments. This follow-up was not performed as part of the code retirement because it changes production credentials and could interrupt Redis access.
+Vercel's environment metadata currently reports a `readable-secret` security finding for the Production Upstash Redis token variable. The variable value was not decrypted, copied, or written to the repository. It is an integration-managed Vercel environment variable, and Vercel rejected changing its type directly to `sensitive`. A safe remediation therefore needs a replacement credential managed as a custom sensitive variable (or an explicitly planned integration disconnect/reconnect), followed by a production redeploy and Redis smoke test. Do not reset the Upstash database password until the replacement credential is ready and the cutover sequence is confirmed, because resetting credentials revokes the existing REST token and briefly restarts the database. This follow-up remains pending.
 
 ## Operational notes
 
