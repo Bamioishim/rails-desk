@@ -28,9 +28,10 @@ Preview deployment for application commit `a9d8dbfd54e3cf555c7ed04b2fd093261ae37
 - Production build compiled successfully.
 - TypeScript completed successfully during the Next.js build.
 - Preview `GET /api/receipts` returned HTTP 200 with a valid empty history and `Cache-Control: no-store`.
+- The latest branch preview also serves `/rails` and `/receipts` with HTTP 200.
 
-Free GitHub Actions run [#45630348013](https://github.com/Bamioishim/rails-desk/actions/runs/45630348013) passed on branch commit `d7d77a711712b60723242f95e3f5073a5867857e`:
-- Vitest unit tests: passed.
+Free GitHub Actions run [#45631383244](https://github.com/Bamioishim/rails-desk/actions/runs/45631383244) passed on branch commit `c32711f2857d36bf8baee82f382574c657ab7cd9`:
+- Vitest unit tests: passed, including the API-level approval-flow integration test.
 - TypeScript: passed.
 - ESLint: passed.
 - Production build: passed.
@@ -38,7 +39,9 @@ Free GitHub Actions run [#45630348013](https://github.com/Bamioishim/rails-desk/
 - Production-only npm audit: zero vulnerabilities.
 - Vitest lockfile version: `4.1.12`.
 
-The run's `free-security-checks` artifact contains the generated report. The paid Kane browser suite was not invoked; it is not a pass and no paid credits were used. No production deployment or merge has been authorized.
+The new `src/app/api/v1/__tests__/workflow.test.ts` test exercises desk creation, owner policy setup, an agent proposal that needs review, rejection of an agent's attempt to approve, owner approval, final proposal status, and a valid two-entry receipt chain. This is an API-level integration test. It ends at the verified owner decision because the current product is decision-only: it does not execute payments or move funds.
+
+The paid Kane browser suite was not invoked; no paid credits were used. The historical 5/5 Kane report on commit `87cae1c` is not evidence for this branch. No current-branch Kane screenshots are available. No production deployment or merge has been authorized.
 
 
 ## Automated checks
