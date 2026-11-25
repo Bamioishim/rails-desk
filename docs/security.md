@@ -20,7 +20,7 @@ Trusted server-side integrations can continue to send an owner bearer key explic
 
 - Owner-only routes authenticate against the HttpOnly cookie (or an explicitly supplied server-side owner bearer credential).
 - Agent credentials can propose and read status, but cannot edit policy or make owner decisions.
-- The daily spend control uses a rolling 24-hour window. Pending proposals reserve budget from creation and keep that reservation until the owner approves or refuses them, even if review takes longer than 24 hours. Once approved, a reviewed proposal counts from its approval timestamp. Refused proposals release their reservation. Proposal-history trimming preserves every pending reservation and every approved spend record still inside the rolling window, so high proposal volume cannot erase cap accounting.
+- The daily spend control uses a rolling 24-hour window. Pending proposals reserve budget from creation for at most 24 hours. A proposal still awaiting review after that window is marked expired, receives an expiry receipt, releases its reservation, and can never be approved. Owner decisions and new proposals run the expiry check under the per-desk mutation lock. Once approved, a reviewed proposal counts from its approval timestamp. Refused and expired proposals release their reservation. Proposal-history trimming preserves every unexpired pending reservation and every approved spend record still inside the rolling window.
 - The database stores SHA-256 hashes of owner and agent keys, not their plaintext values.
 - Mutations use a per-desk lock and revision compare-and-set when Redis is enabled.
 - Rate limits apply to write routes. CORS is allowlist-based, never wildcard.
