@@ -13,6 +13,8 @@ Session exchange, logout, and owner-session rotation require an explicit `Origin
 Trusted server-side integrations can continue to send an owner bearer key explicitly. Never expose that key to an agent.
 
 Session hashes live in the desk record, so they inherit the configured desk-storage durability. Production Redis keeps sessions shared across server instances; Preview without Redis uses ephemeral storage and does not provide durable cross-instance sessions.
+
+The free-check workflow runs unit tests, TypeScript, ESLint, production build, and dependency audits on the owner-session-hardening branch. It does not invoke the paid Kane browser suite.
 ## Content Security Policy
 
 `src/proxy.ts` creates a per-request nonce and passes the CSP to Next.js in both request and response headers. Production `script-src` uses the nonce and strict-dynamic; it does not permit unsafe-inline or unsafe-eval. The connection policy is restricted to the app's own origin. Objects and framing are blocked, and form actions and base URLs are restricted. The matcher applies to application routes while excluding Next static/image assets and the favicon.
