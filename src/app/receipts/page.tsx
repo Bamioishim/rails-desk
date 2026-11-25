@@ -6,10 +6,10 @@ import { verifyChain } from "@/lib/rails";
 import Link from "next/link";
 import { useDesk } from "@/components/desk";
 
-const outcomeLabel = { approved: "approved", needs_review: "needs your OK", blocked: "blocked", refused: "refused" } as const;
+const outcomeLabel = { approved: "approved", needs_review: "needs your OK", blocked: "blocked", refused: "refused", expired: "expired" } as const;
 const outcomeTag = (o: keyof typeof outcomeLabel) => (o === "approved" ? "tag green" : o === "needs_review" ? "tag neutral" : "tag red");
 const outcomeSummary = (o: keyof typeof outcomeLabel, detail: string, reviewed = false) =>
-  detail.toLowerCase().includes("review window expired") ? "Owner review window expired. This proposal can no longer be approved."
+  o === "expired" || detail.toLowerCase().includes("review window expired") ? "Owner review window expired. This proposal can no longer be approved."
     : reviewed && o === "approved" ? "Approved by you after review."
     : o === "approved" ? "Proposal approved by your rails."
     : o === "needs_review" ? "Proposal needs your approval."
@@ -39,8 +39,10 @@ export default function ReceiptsPage() {
     finally { setBusy(null); }
   };
   const proposalForReceipt = (proposalId: string) => desk?.proposals.find((p) => p.id === proposalId);
-  const displayedOutcome = (r: NonNullable<typeof desk>["receipts"][number]) =>
-    proposalForReceipt(r.proposalId)?.review?.decision ?? r.outcome;
+  const displayedOutcome = (r: NonNullable<typeof desk>["receipts"][number]) => {
+    const proposal = proposalForReceipt(r.proposalId);
+    return proposal?.expiredAt ? "expired" as const : proposal?.review?.decision ?? r.outcome;
+  };
   const exportDesk = () => {
     if (!desk) return;
     const blob = new Blob([JSON.stringify({ decisions: decisionReceipts, demoActivity }, null, 2)], { type: "application/json" });
