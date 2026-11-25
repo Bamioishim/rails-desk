@@ -40,7 +40,25 @@ The latest main-branch free-check run [#45679177608](https://github.com/Bamioish
 - ESLint: passed
 - Production build: passed
 
-This run validates the free CI checks only. The paid Kane browser suite remains separate and has not yet been run against this commit.
+This run validates the free CI checks only. The paid Kane browser suite was subsequently run successfully on the same main-branch source commit in workflow run [#45680518665](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665), detailed below.
+
+## Current Kane browser acceptance
+
+The manual Kane Gate workflow [#105 / run #45680518665](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) completed successfully on 25 November 2026 against main commit `fc7f73f542b407faf5b83a78dacadeed37853a2c`.
+
+- Result: **5/5 Kane tests passed** (Kane CLI 0.10.6).
+- The gate's preceding dependency installation, unit tests, TypeScript check, ESLint, and production build also passed.
+- The uploaded [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703) contains `KANE_REPORT.md` with the test outcomes and individual Kane run links.
+
+| Browser scenario | Result |
+|---|---|
+| User sets rules, agent proposes, user approves | Passed |
+| Valid demo proposal waits for approval, then mock execution | Passed |
+| Blocked payment uses “Blocked” wording throughout | Passed |
+| Demo walkthrough runs all three outcomes and narrates them | Passed |
+| Landing page opens the demo and the app | Passed |
+
+The uploaded workflow artifact contains the Markdown report only. The individual Kane dashboard links in that report are the available per-test evidence; this workflow did not upload a separate screenshot bundle. This is browser acceptance of the documented mock/demo flows, not a live payment or settlement test.
 
 ## Production Redis persistence
 
@@ -88,4 +106,4 @@ npm run lint
 npm run build
 ```
 
-The paid Kane gate is separate and manual. Do not run it without explicit owner approval and available credits. A skipped or unavailable Kane run is not a pass.
+The paid Kane gate is separate and manual. Run it only with explicit owner approval and available credits. A skipped or unavailable Kane run is not a pass. The current approved run and its 5/5 result are recorded above.
