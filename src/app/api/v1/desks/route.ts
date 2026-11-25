@@ -1,4 +1,4 @@
-import { createDesk } from "@/lib/server/desk";
+import { createDesk, createOwnerSession } from "@/lib/server/desk";
 import { ownerCookie } from "@/lib/server/session";
 import { fail, json, limit, ok, options } from "@/lib/server/http";
 export const OPTIONS = options;
@@ -11,7 +11,8 @@ export async function POST(request: Request) {
     const body = await json(request);
     const created = await createDesk(typeof body?.name === "string" ? body.name : undefined);
     const response = ok({ desk: created.desk, agentKey: created.agentKey }, 201, request);
-    response.headers.append("Set-Cookie", ownerCookie(created.ownerKey));
+    const sessionToken = await createOwnerSession(created.ownerKey);
+    response.headers.append("Set-Cookie", ownerCookie(sessionToken));
     return response;
   } catch (e) { return fail(e, request); }
 }

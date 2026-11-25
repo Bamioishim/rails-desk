@@ -21,6 +21,8 @@ export const LIMITS = {
   perIp: (): Limit => ({ bucket: "ip", limit: envNum("RAILS_DESK_RATE_PER_IP_PER_MIN", 300), windowMs: 60_000 }),
   /** Per client IP: new desks. */
   desksPerIp: (): Limit => ({ bucket: "desks", limit: envNum("RAILS_DESK_RATE_DESKS_PER_IP_PER_HOUR", 20), windowMs: 3_600_000 }),
+  /** Per client IP: browser session exchange and logout. */
+  sessionPerIp: (): Limit => ({ bucket: "session", limit: envNum("RAILS_DESK_RATE_SESSIONS_PER_IP_PER_MIN", 10), windowMs: 60_000 }),
 };
 
 export const rateLimitEnabled = () => process.env.RAILS_DESK_RATE_LIMIT !== "off";
