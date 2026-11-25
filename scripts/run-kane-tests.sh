@@ -6,23 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-# Load gitignored local env if present, without printing values.
-if [[ -f "$ROOT/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$ROOT/.env"
-  set +a
-fi
-
 BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
 BASE_URL="${BASE_URL%/}"
 MARKER="https://preview.invalid"
-
-if [[ -z "${LT_USERNAME:-}" || -z "${LT_ACCESS_KEY:-}" ]]; then
-  echo "LT_USERNAME and LT_ACCESS_KEY must be set in the environment (or in a gitignored .env)." >&2
-  echo "Copy the placeholders from .env.example. Do not commit real values." >&2
-  exit 1
-fi
 
 if ! command -v kane-cli >/dev/null 2>&1; then
   echo "kane-cli is not on PATH. Install it with:" >&2
@@ -30,10 +16,15 @@ if ! command -v kane-cli >/dev/null 2>&1; then
   exit 1
 fi
 
-# Authenticate from env without echoing the access key.
-# A stored Kane profile is reused when whoami already succeeds.
+# Fail closed: Kane CLI 0.10.6 documents Basic Auth only through
+# --username/--access-key flags. Those expose secrets in process arguments,
+# so this script must not pass LT_ACCESS_KEY that way. Require a profile
+# authenticated interactively on this machine/runner instead.
 if ! kane-cli whoami >/dev/null 2>&1; then
-  kane-cli login --username "$LT_USERNAME" --access-key "$LT_ACCESS_KEY"
+  echo "Kane CLI is not authenticated for this environment." >&2
+  echo "Authenticate with 'kane-cli login' in a trusted interactive terminal, then rerun." >&2
+  echo "This script intentionally does not pass credentials as command-line arguments." >&2
+  exit 1
 fi
 
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/rails-desk-kane.XXXXXX")"
