@@ -160,13 +160,3 @@ PR [#16](https://github.com/Bamioishim/rails-desk/pull/16) adds server-validated
 
 The free-check run [#70](https://github.com/Bamioishim/rails-desk/actions/runs/45700162469) passed 56 tests across 9 files, plus TypeScript, ESLint, dependency audits, and production build. This is automated verification; no live production owner session was used or modified.
 
-## General API write Origin guard follow-up
-
-Draft [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) adds same-origin or explicitly allowlisted Origin validation to all write routes. Requests without an Origin header remain supported for server-to-server agent clients. The dedicated session routes continue to require an explicit same-origin Origin header and their separate per-IP rate limit.
-
-Free-check run [#45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553) passed on branch `security/write-origin-guard`:
-- 57/57 tests passed.
-- TypeScript, ESLint, full and production dependency audits, and production build passed.
-- No Kane or paid browser tests were run.
-
-Vercel Preview did not create a deployment because the account's daily deployment quota was reached. The existing security Preview remains the latest available preview; the GitHub production build passed. PR #18 is ready for review and has not been merged.
