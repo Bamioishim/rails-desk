@@ -11,6 +11,19 @@ import { clientIp, hit, LIMITS, rateLimitEnabled, type Limit, type LimitResult }
 export function allowedOrigins(): string[] {
   return (process.env.RAILS_DESK_ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
 }
+/** Reject browser write requests from origins other than this app or an explicit CORS allowlist. */
+export function assertAllowedWriteOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  const fetchSite = request.headers.get("sec-fetch-site");
+  const ownOrigin = new URL(request.url).origin;
+  if (origin && origin !== ownOrigin && !allowedOrigins().includes(origin)) {
+    throw new DeskError("Cross-origin write request blocked.", 403);
+  }
+  if (fetchSite === "cross-site" && (!origin || (origin !== ownOrigin && !allowedOrigins().includes(origin)))) {
+    throw new DeskError("Cross-site write request blocked.", 403);
+  }
+}
+
 export function corsHeaders(request?: Request): Record<string, string> {
   const origin = request?.headers.get("origin");
   if (!origin || !allowedOrigins().includes(origin)) return {};
@@ -44,6 +57,7 @@ type Scope = "key" | "desk-create";
  * "desk-create": per IP (20/hour). Returns a 429 Response when over, otherwise null.
  */
 export async function limit(request: Request, scope: Scope): Promise<Response | null> {
+  assertAllowedWriteOrigin(request);
   if (!rateLimitEnabled()) return null;
   const ip = clientIp(request);
   const checks: [Limit, string][] = scope === "desk-create"
