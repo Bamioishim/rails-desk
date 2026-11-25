@@ -49,6 +49,7 @@ The manual Kane Gate workflow [#105 / run #45680518665](https://github.com/Bamio
 - Result: **5/5 Kane tests passed** (Kane CLI 0.10.6).
 - The gate's preceding dependency installation, unit tests, TypeScript check, ESLint, and production build also passed.
 - The uploaded [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703) contains `KANE_REPORT.md` with the test outcomes and individual Kane run links.
+- The checked-in [current Kane evidence record](kane-evidence/08-current-main-run-2026-11-25.md) preserves the exact report metadata and all five direct test links.
 
 | Browser scenario | Result | Direct Kane evidence |
 |---|---|---|
