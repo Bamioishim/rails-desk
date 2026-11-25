@@ -44,6 +44,10 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 
 The Kane suite covers the documented agent-review, mock approval/execution, blocked wording, demo walkthrough, and landing-page entry flows. It tests the mock/demo product, not live payment settlement. No funds move in Rails Desk. The current run artifact contains the Markdown report and direct per-test Kane links, but no separate screenshot bundle.
 
+**Pending security follow-up**
+
+- **Write-route Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). This follow-up is ready for review, not merged. Vercel Preview is blocked by the account deployment quota; the existing security Preview above remains the latest available preview.
+
 See [full verification notes and direct test evidence](docs/verification.md) before treating these checks as proof of production payment execution.
 
 ## Quickstart
