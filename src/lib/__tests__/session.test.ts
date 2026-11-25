@@ -4,7 +4,7 @@ import { OWNER_COOKIE, ownerCookie, ownerCredential } from "../server/session";
 describe("owner session cookie", () => {
   it("prefers the HttpOnly cookie credential", () => {
     const request = new Request("https://rails-desk.test/api/v1/desk", {
-      headers: { cookie: `${OWNER_COOKIE}=rd_owner_12345678_secretsecretsecret` },
+      headers: { cookie: `${OWNER_COOKIE}=rd_session_12345678_secretsecretsecret` },
     });
     expect(ownerCredential(request)).toBe("rd_owner_12345678_secretsecretsecret");
   });
