@@ -11,7 +11,7 @@ export function proxy(request: NextRequest) {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob:",
     "media-src 'self'",
-    `connect-src 'self' https://rpc.xlayer.tech https://xlayerrpc.okx.com https://testrpc.xlayer.tech https://xlayertestrpc.okx.com${isDev ? " ws: wss:" : ""}`,
+    `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
