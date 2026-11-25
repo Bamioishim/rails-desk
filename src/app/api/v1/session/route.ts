@@ -10,6 +10,8 @@ export async function GET(request: Request) {
     const desk = await getDesk(credential);
     // Upgrade cookies issued by the previous version, which contained the raw owner key.
     if (cookieCredential?.startsWith("rd_owner_")) {
+      const limited = await limit(request, "session");
+      if (limited) return limited;
       const sessionToken = await createOwnerSession(cookieCredential);
       const response = ok({ authenticated: true, desk }, 200, request);
       response.headers.append("Set-Cookie", ownerCookie(sessionToken));
