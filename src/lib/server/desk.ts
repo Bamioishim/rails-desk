@@ -7,8 +7,8 @@ export type Check = { rule: "amount" | "max_per_action" | "allowlist" | "review_
 export type PolicySnapshot = { rules: Rules; checks: Check[] };
 export type Proposal = {
   id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string;
-  status: Status; checks: Check[]; reasons: string[]; policySnapshot?: PolicySnapshot;
-  review: null | { decision: "approved" | "refused"; at: string; note?: string; policySnapshot?: PolicySnapshot };
+  status: Status | "expired"; checks: Check[]; reasons: string[]; policySnapshot?: PolicySnapshot;
+  review: null | { decision: "approved" | "refused" | "expired"; at: string; note?: string; policySnapshot?: PolicySnapshot };
   /** Opaque legacy data retained in storage; never exposed or acted on. */
   settlement?: unknown;
   receiptIds: string[];
@@ -16,7 +16,7 @@ export type Proposal = {
 export type DeskReceipt = {
   index: number; id: string; at: string; proposalId: string; event: string;
   source?: "app" | "demo";
-  outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string;
+  outcome: "approved" | "needs_review" | "blocked" | "refused" | "expired"; amount: number; recipient: string; detail: string;
   /** Immutable rules and checks used for this event. Older receipts may not have a snapshot. */
   policySnapshot?: PolicySnapshot;
   previousHash: string; hash: string;
@@ -32,6 +32,7 @@ type Desk = {
 export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10, dailySpendCap: 100 };
 const GENESIS = "0".repeat(64);
 const MAX_PROPOSALS = 500;
+export const PENDING_PROPOSAL_TTL_MS = 24 * 60 * 60 * 1000;
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const token = (n = 24) => randomBytes(n).toString("base64url");
 const newId = (prefix: string) => `${prefix}_${randomBytes(9).toString("hex")}`;
@@ -111,6 +112,38 @@ function snapshotPolicy(rules: Rules, checks: Check[]): PolicySnapshot {
   return { rules: { ...DEFAULT_RULES, ...rules, allowedRecipients: [...rules.allowedRecipients] }, checks: checks.map((check) => ({ ...check })) };
 }
 
+function isExpiredPending(proposal: Proposal, now = Date.now()) {
+  return proposal.status === "needs_review" && !proposal.review &&
+    Number.isFinite(Date.parse(proposal.createdAt)) &&
+    now >= Date.parse(proposal.createdAt) + PENDING_PROPOSAL_TTL_MS;
+}
+
+function expireProposal(desk: Desk, proposal: Proposal, now = Date.now()) {
+  if (!isExpiredPending(proposal, now)) return false;
+  proposal.status = "expired";
+  proposal.review = {
+    decision: "expired",
+    at: new Date(now).toISOString(),
+    note: "Automatically expired after 24 hours without owner review.",
+    policySnapshot: proposal.policySnapshot,
+  };
+  const receipt = appendReceipt(desk, {
+    proposalId: proposal.id,
+    event: "expired_by_system",
+    outcome: "expired",
+    amount: proposal.amount,
+    recipient: proposal.recipient,
+    detail: "Expired after 24 hours without owner review. Approval is no longer available.",
+    policySnapshot: proposal.policySnapshot,
+  });
+  proposal.receiptIds.push(receipt.id);
+  return true;
+}
+
+function expirePendingProposals(desk: Desk, now = Date.now()) {
+  for (const proposal of desk.proposals) expireProposal(desk, proposal, now);
+}
+
 function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: string) {
   const windowStart = now.getTime() - 24 * 60 * 60 * 1000;
   return desk.proposals.reduce((sum, proposal) => {
@@ -177,13 +210,20 @@ export function publicDesk(desk: Desk) {
   void _o; void _a; void _legacyAnchors;
   const proposals = desk.proposals.map(({ settlement: _legacySettlement, ...proposal }) => {
     void _legacySettlement;
+    if (isExpiredPending(proposal)) {
+      const at = new Date(Date.parse(proposal.createdAt) + PENDING_PROPOSAL_TTL_MS).toISOString();
+      return { ...proposal, status: "expired" as const, review: { decision: "expired" as const, at, note: "Automatically expired after 24 hours without owner review." } };
+    }
     return proposal;
   });
-  return { ...rest, proposals, demoReceipts: desk.demoReceipts ?? [], demoVerification: verifyDeskChain(desk.demoReceipts ?? []), storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
+  return { ...rest, proposals, demoReceipts: desk.demoReceipts ?? [], demoVerification: verifyDeskChain(desk.demoReceipts ?? []), storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review && !isExpiredPending(p)).length };
 }
 export function publicProposal(p: Proposal) {
-  const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
-  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, created_at: p.createdAt };
+  const expired = isExpiredPending(p);
+  const status = expired ? "expired" : p.status;
+  const review = expired ? { decision: "expired" as const, at: new Date(Date.parse(p.createdAt) + PENDING_PROPOSAL_TTL_MS).toISOString(), note: "Automatically expired after 24 hours without owner review." } : p.review;
+  const final = review ? review.decision : status;
+  return { id: p.id, status, final_status: final, awaiting_review: status === "needs_review" && !review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review, created_at: p.createdAt };
 }
 
 export async function createDesk(name?: string) {
@@ -227,6 +267,7 @@ export async function propose(key: string | null, body: unknown) {
   if (!recipient) throw new DeskError("recipient (string) is required.", 400);
   if (b.amount === undefined || b.amount === null || Number.isNaN(amount)) throw new DeskError("amount (number) is required.", 400);
   return mutate(key, "any", (desk) => {
+    expirePendingProposals(desk);
     const { status: initialStatus, checks } = evaluate(amount, recipient, { ...DEFAULT_RULES, ...desk.rules });
     const committed = dailyCommittedSpend(desk);
     const dailyCap = desk.rules.dailySpendCap ?? DEFAULT_RULES.dailySpendCap;
@@ -258,6 +299,7 @@ export async function decide(key: string | null, id: string, decision: unknown, 
   return mutate(key, "owner", (desk) => {
     const p = desk.proposals.find((x) => x.id === id);
     if (!p) throw new DeskError("Proposal not found.", 404);
+    if (expireProposal(desk, p) || p.status === "expired") return { expired: true as const };
     if (p.status !== "needs_review") throw new DeskError(`This proposal was ${p.status} by the rails; only proposals that need review can be decided.`, 409);
     if (p.review) throw new DeskError(`Already ${p.review.decision}.`, 409);
     // Re-check against the current rules: a payment blocked by today's rules cannot be approved.
@@ -271,7 +313,10 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined, policySnapshot };
     const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review.", policySnapshot });
     p.receiptIds.push(r.id);
-    return publicProposal(p);
+    return { expired: false as const, proposal: publicProposal(p) };
+  }).then((result) => {
+    if (result.expired) throw new DeskError("This proposal has expired and can no longer be approved.", 409);
+    return result.proposal;
   });
 }
 
