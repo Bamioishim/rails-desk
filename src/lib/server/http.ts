@@ -44,6 +44,10 @@ type Scope = "key" | "desk-create" | "session";
  * "desk-create": per IP (20/hour); "session": per IP (10/minute). Returns a 429 Response when over, otherwise null.
  */
 export async function limit(request: Request, scope: Scope): Promise<Response | null> {
+  const origin = request.headers.get("origin");
+  if (origin && !isSameOriginRequest(request) && !allowedOrigins().includes(origin)) {
+    throw new DeskError("Cross-origin write request blocked.", 403);
+  }
   if (!rateLimitEnabled()) return null;
   const ip = clientIp(request);
   const checks: [Limit, string][] = scope === "desk-create"
