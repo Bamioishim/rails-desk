@@ -1,6 +1,20 @@
 # Verification and release evidence
 
-## Current production release: 25 November 2026
+## Latest main-branch security merge: 25 November 2026
+
+Proposal-expiry, concurrent-budget, and owner-session hardening are merged into `main`:
+- [PR #11: pending-review expiry and concurrent budget enforcement](https://github.com/Bamioishim/rails-desk/pull/11)
+- [PR #16: revocable owner sessions and session endpoint protections](https://github.com/Bamioishim/rails-desk/pull/16)
+
+The consolidated free-check workflow [#70](https://github.com/Bamioishim/rails-desk/actions/runs/45700162469) passed on the final hardening branch before merge:
+- 56 tests across 9 test files passed.
+- TypeScript, ESLint, and production build passed.
+- Full and production dependency audit steps completed.
+- No paid Kane browser suite was invoked.
+
+The production domain remains [rails-desk.vercel.app](https://rails-desk.vercel.app). The deployment for the new merged main commit must reach Vercel `READY` and be checked separately; a successful CI build is not evidence that the production deployment has completed.
+
+## Previous production release baseline: 25 November 2026
 
 The X Layer retirement is merged into `main` at commit `8783e6336c58870e864eaa8c42f7ad4cc9a13807`.
 
@@ -120,4 +134,15 @@ Security hardening PR [#11](https://github.com/Bamioishim/rails-desk/pull/11) wa
 - Existing cross-instance receipt-chain and concurrent owner-decision tests passed.
 - TypeScript, ESLint, and production build passed.
 
-The branch remains in an open pull request and has not been merged or deployed. This is automated test evidence, not production runtime verification.
+The changes are merged into `main` through PR #11. The automated run is test evidence, not production runtime verification.
+
+## Revocable owner-session hardening
+
+PR [#16](https://github.com/Bamioishim/rails-desk/pull/16) adds server-validated browser sessions:
+- Browser cookies contain random session tokens; only SHA-256 hashes and expiry metadata are persisted.
+- Logout revokes the current browser session, so a copied cookie no longer authenticates.
+- Owner-key rotation invalidates all previous browser sessions and issues a fresh session to the current browser.
+- Session exchange, logout, and rotation reject missing or cross-origin Origin headers and use a dedicated per-IP limit.
+- Existing raw owner-key cookies are upgraded to revocable sessions on app startup.
+
+The free-check run [#70](https://github.com/Bamioishim/rails-desk/actions/runs/45700162469) passed 56 tests across 9 files, plus TypeScript, ESLint, dependency audits, and production build. This is automated verification; no live production owner session was used or modified.
