@@ -2,7 +2,7 @@ name: Free checks (no Kane)
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/legacy-receipts-read-only]
     paths-ignore:
       - ".github/workflows/free-checks.yml"
   workflow_dispatch:
