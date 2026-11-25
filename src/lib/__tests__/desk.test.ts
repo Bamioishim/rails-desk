@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { createDesk, decide, evaluate, getDesk, getProposal, propose, rotateAgentKey, rotateOwnerKey, updateRules, verifyDeskChain, recordDemoEvent, DEFAULT_RULES } from "../server/desk";
+import { createDesk, createOwnerSession, decide, evaluate, getDesk, getProposal, propose, revokeOwnerSession, rotateAgentKey, rotateOwnerKey, updateRules, verifyDeskChain, recordDemoEvent, DEFAULT_RULES } from "../server/desk";
 
 beforeAll(() => { process.env.RAILS_DESK_DATA_DIR = mkdtempSync(path.join(tmpdir(), "desk-test-")); delete process.env.KV_REST_API_URL; delete process.env.UPSTASH_REDIS_REST_URL; });
 
@@ -171,12 +171,28 @@ describe("desk API flow", () => {
     }
   });
 
-  it("rotates the owner key and invalidates the previous credential", async () => {
+  it("issues revocable owner sessions and revokes only the logged-out browser", async () => {
+    const { ownerKey } = await createDesk("Revocable owner sessions");
+    const first = await createOwnerSession(ownerKey);
+    const second = await createOwnerSession(ownerKey);
+    expect((await getDesk(first)).id).toBeTruthy();
+    expect((await getDesk(second)).id).toBeTruthy();
+    expect(await revokeOwnerSession(first)).toBe(true);
+    await expect(getDesk(first)).rejects.toThrow(/Invalid or expired owner session/);
+    expect((await getDesk(second)).id).toBeTruthy();
+    const publicState = await getDesk(second);
+    expect(publicState).not.toHaveProperty("ownerSessions");
+  });
+
+  it("rotates the owner key and invalidates all old sessions", async () => {
     const { ownerKey } = await createDesk("Owner key rotation");
-    const { ownerKey: replacement } = await rotateOwnerKey(ownerKey);
+    const oldSession = await createOwnerSession(ownerKey);
+    const { ownerKey: replacement } = await rotateOwnerKey(oldSession);
     expect(replacement).not.toBe(ownerKey);
-    await expect(getDesk(ownerKey)).rejects.toThrow(/Invalid API key/);
-    expect((await getDesk(replacement)).id).toBeTruthy();
+    await expect(getDesk(ownerKey)).rejects.toThrow(/Invalid or expired owner session/);
+    await expect(getDesk(oldSession)).rejects.toThrow(/Invalid or expired owner session/);
+    const freshSession = await createOwnerSession(replacement);
+    expect((await getDesk(freshSession)).id).toBeTruthy();
   });
 
   it("rejects bad keys and bad bodies", async () => {
