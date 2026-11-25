@@ -68,11 +68,8 @@ if (!process.env.LT_USERNAME || !process.env.LT_ACCESS_KEY) {
 const has = cmd => spawnSync("bash", ["-lc", `command -v ${cmd}`], {stdio: "ignore"}).status === 0;
 if (!has("kane-cli")) fail("kane-cli is not on PATH. Install it with: npm install -g @testmuai/kane-cli@0.10.6");
 
-// Log in without echoing the key. A stored profile is reused when whoami already works.
-if (spawnSync("kane-cli", ["whoami"], {stdio: "ignore"}).status !== 0) {
-  const r = spawnSync("kane-cli", ["login", "--username", process.env.LT_USERNAME, "--access-key", process.env.LT_ACCESS_KEY], {stdio: ["ignore", "ignore", "pipe"]});
-  if (r.status !== 0) fail("kane-cli login failed. Check LT_USERNAME / LT_ACCESS_KEY.");
-}
+// CI authentication is passed directly to the documented testrun flags.
+ // Do not create or depend on a persisted interactive Kane profile.
 const balance = () => {
   const r = spawnSync("kane-cli", ["balance"], {encoding: "utf8"});
   const m = `${r.stdout}${r.stderr}`.match(/Available credits:\s*([\d.]+)/);
@@ -282,7 +279,7 @@ for (const f of files) {
 log(`Running ${files.length} Kane test(s) against ${baseUrl}: ${files.join(", ")}`);
 const runDir = path.join(KANE_DIR, "runs", new Date().toISOString().replace(/[:.]/g, "-"));
 mkdirSync(runDir, {recursive: true});
-const args = ["testrun", "run", ...files.map(f => `tests/kane/${f}`), "--headless", "--agent", "--on-failure", "continue", "--parallel", "1", "--name", opt.name ?? process.env.KANE_RUN_NAME ?? "Rails Desk Kane gate"];
+const args = ["testrun", "run", ...files.map(f => `tests/kane/${f}`), "--headless", "--agent", "--on-failure", "continue", "--parallel", "1", "--username", process.env.LT_USERNAME, "--access-key", process.env.LT_ACCESS_KEY, "--name", opt.name ?? process.env.KANE_RUN_NAME ?? "Rails Desk Kane gate"];
 if (opt.tags) args.push("--tags", opt.tags);
 const stdoutLines = [];
 const code = await new Promise(resolve => {
