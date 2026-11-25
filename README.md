@@ -23,6 +23,7 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 - **Kane browser acceptance:** 5/5 passed on 25 November 2026. [Workflow run #105](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) · [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703) · [Checked-in per-test evidence](docs/kane-evidence/08-current-main-run-2026-11-25.md).
 - **Free CI:** dependency installation, full and production dependency audits, unit tests, TypeScript, ESLint, and production build passed in [run #45679177608](https://github.com/Bamioishim/rails-desk/actions/runs/45679177608).
 - **Production Redis smoke:** passed in [run #45526309628](https://github.com/Bamioishim/rails-desk/actions/runs/45526309628).
+- **Security hardening branch:** [PR #11](https://github.com/Bamioishim/rails-desk/pull/11) passed the free CI suite on 25 November 2026: unit tests, TypeScript, ESLint, production build, and dependency audits in [run #45693392180](https://github.com/Bamioishim/rails-desk/actions/runs/45693392180). The PR is open and not merged.
 
 The Kane suite covers the documented agent-review, mock approval/execution, blocked wording, demo walkthrough, and landing-page entry flows. It tests the mock/demo product, not live payment settlement. No funds move in Rails Desk. The current run artifact contains the Markdown report and direct per-test Kane links, but no separate screenshot bundle.
 
@@ -81,7 +82,7 @@ POST /api/v1/proposals ──► Policy evaluator
 ```
 
 - **Next.js App Router** serves the web app and JSON API.
-- **Policy engine** checks positive amounts, per-action maximum, a rolling 24-hour spend cap (including pending proposals reserved from creation and reviewed approvals counted from approval time), case-insensitive recipient allowlist, and owner-review threshold. Policy snapshots are recorded with decisions.
+- **Policy engine** checks positive amounts, per-action maximum, a rolling 24-hour spend cap (pending reviews expire after 24 hours and release their reservation; reviewed approvals count from approval time), case-insensitive recipient allowlist, and owner-review threshold. Policy snapshots are recorded with decisions.
 - **Owner session** uses a same-site HttpOnly cookie, Secure in production. The `/rails` page includes a self-service owner-session rotation control; the owner credential is never displayed or stored in browser localStorage. The agent key remains separately available to copy into an agent client.
 - **Storage** uses Upstash Redis when configured; local development can use JSON files. On serverless hosting, filesystem fallback is temporary and is not durable.
 - **Receipts** form a SHA-256-linked sequence for app decisions. Simulated walkthrough events use a separate SHA-256-linked demo chain. These are application-level integrity checks, not public blockchain anchors or proof against a privileged server operator.
