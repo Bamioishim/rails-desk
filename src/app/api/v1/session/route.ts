@@ -1,12 +1,21 @@
 import { createOwnerSession, DeskError, getDesk, revokeOwnerSession } from "@/lib/server/desk";
-import { ownerCredential, ownerCookie } from "@/lib/server/session";
+import { ownerCookieCredential, ownerCredential, ownerCookie } from "@/lib/server/session";
 import { fail, isSameOriginRequest, limit, ok } from "@/lib/server/http";
 
 export async function GET(request: Request) {
   try {
-    const credential = ownerCredential(request);
+    const cookieCredential = ownerCookieCredential(request);
+    const credential = cookieCredential ?? ownerCredential(request);
     if (!credential) return ok({ authenticated: false }, 200, request);
-    return ok({ authenticated: true, desk: await getDesk(credential) }, 200, request);
+    const desk = await getDesk(credential);
+    // Upgrade cookies issued by the previous version, which contained the raw owner key.
+    if (cookieCredential?.startsWith("rd_owner_")) {
+      const sessionToken = await createOwnerSession(cookieCredential);
+      const response = ok({ authenticated: true, desk }, 200, request);
+      response.headers.append("Set-Cookie", ownerCookie(sessionToken));
+      return response;
+    }
+    return ok({ authenticated: true, desk }, 200, request);
   } catch (error) { return fail(error, request); }
 }
 
