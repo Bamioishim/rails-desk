@@ -44,7 +44,7 @@ This smoke test creates an isolated synthetic desk and pending proposal in produ
 
 ## Production checks not performed
 
-- The authenticated `GET /api/v1/desk` route was not called directly because no owner session was used.
+- No pre-existing owner desk or owner session was accessed. The production Redis smoke test created an isolated synthetic desk and used the owner session returned for that test to perform its two authenticated reads.
 - No interactive browser acceptance run was performed against production.
 
 A public route returning HTTP 200 confirms that it is served; it does not prove authenticated API behavior or full interactive acceptance.
