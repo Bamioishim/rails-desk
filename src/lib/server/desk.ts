@@ -12,6 +12,8 @@ export type Proposal = {
   /** Opaque legacy data retained in storage; never exposed or acted on. */
   settlement?: unknown;
   receiptIds: string[];
+  /** Set when a pending review exceeds the 24-hour decision window. */
+  expiredAt?: string;
 };
 export type DeskReceipt = {
   index: number; id: string; at: string; proposalId: string; event: string;
@@ -24,6 +26,7 @@ export type DeskReceipt = {
 type Desk = {
   version: 1; id: string; name: string; createdAt: string;
   ownerKeyHash: string; agentKeyHash: string; agentKeyHint: string;
+  ownerSessions?: { tokenHash: string; createdAt: string; expiresAt: string }[];
   rules: Rules; proposals: Proposal[]; receipts: DeskReceipt[]; demoReceipts?: DeskReceipt[];
   /** Opaque legacy data retained in storage; never exposed or acted on. */
   anchors?: unknown[];
@@ -32,6 +35,7 @@ type Desk = {
 export const DEFAULT_RULES: Rules = { allowedRecipients: ["Alex", "Jordan", "Sam"], maxPerAction: 20, reviewLimit: 10, dailySpendCap: 100 };
 const GENESIS = "0".repeat(64);
 const MAX_PROPOSALS = 500;
+export const PENDING_REVIEW_TTL_MS = 24 * 60 * 60 * 1000;
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const token = (n = 24) => randomBytes(n).toString("base64url");
 const newId = (prefix: string) => `${prefix}_${randomBytes(9).toString("hex")}`;
@@ -45,9 +49,9 @@ function equalHash(a: string, b: string) {
 
 /** Keys look like rd_owner_<deskId>_<secret> and rd_agent_<deskId>_<secret>. Only hashes are stored. */
 function parseKey(key: string | null) {
-  const m = key?.match(/^rd_(owner|agent)_([a-z0-9]{8,40})_([A-Za-z0-9_-]{20,})$/);
+  const m = key?.match(/^rd_(owner|agent|session)_([a-z0-9]{8,40})_([A-Za-z0-9_-]{20,})$/);
   if (!m) throw new DeskError("Missing or malformed API key. Send Authorization: Bearer <key>.", 401);
-  return { role: m[1] as "owner" | "agent", deskId: m[2], key: key! };
+  return { role: m[1] as "owner" | "agent" | "session", deskId: m[2], key: key! };
 }
 export function bearer(request: Request) { return request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ?? null; }
 
@@ -58,10 +62,15 @@ async function load(deskId: string): Promise<{ desk: Desk; rev: string }> {
 }
 async function authed(key: string | null, need: "owner" | "agent" | "any") {
   const k = parseKey(key);
-  if (need === "owner" && k.role !== "owner") throw new DeskError("This action needs the owner key, not the agent key.", 403);
+  if (need === "owner" && k.role === "agent") throw new DeskError("This action needs the owner key or owner session, not the agent key.", 403);
   const { desk, rev } = await load(k.deskId);
-  const ok = equalHash(sha(k.key), k.role === "owner" ? desk.ownerKeyHash : desk.agentKeyHash);
-  if (!ok) throw new DeskError("Invalid API key.", 401);
+  const candidateHash = sha(k.key);
+  const ok = k.role === "owner"
+    ? equalHash(candidateHash, desk.ownerKeyHash)
+    : k.role === "agent"
+      ? equalHash(candidateHash, desk.agentKeyHash)
+      : (desk.ownerSessions ?? []).some((session) => equalHash(candidateHash, session.tokenHash) && Date.parse(session.expiresAt) > Date.now());
+  if (!ok) throw new DeskError(k.role === "agent" ? "Invalid API key." : "Invalid or expired owner session.", 401);
   return { desk, role: k.role, rev };
 }
 
@@ -115,8 +124,8 @@ function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: s
   const windowStart = now.getTime() - 24 * 60 * 60 * 1000;
   return desk.proposals.reduce((sum, proposal) => {
     if (proposal.id === excludeProposalId) return sum;
-    const active = proposal.status === "approved" ||
-      (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved"));
+    const active = !proposal.expiredAt && (proposal.status === "approved" ||
+      (proposal.status === "needs_review" && (!proposal.review || proposal.review.decision === "approved")));
     if (!active) return sum;
     // Pending proposals reserve budget from creation; reviewed approvals count from approval time.
     const committedAt = Date.parse(
@@ -136,10 +145,10 @@ function dailyCommittedSpend(desk: Desk, now = new Date(), excludeProposalId?: s
 function trimProposals(proposals: Proposal[], now = Date.now()) {
   const windowStart = now - 24 * 60 * 60 * 1000;
   const retained = proposals.filter((proposal) => {
-    const pending = proposal.status === "needs_review" && !proposal.review;
+    const pending = proposal.status === "needs_review" && !proposal.review && !proposal.expiredAt;
     if (pending) return true;
-    const active = proposal.status === "approved" ||
-      (proposal.status === "needs_review" && proposal.review?.decision === "approved");
+    const active = !proposal.expiredAt && (proposal.status === "approved" ||
+      (proposal.status === "needs_review" && proposal.review?.decision === "approved"));
     if (!active) return false;
     const committedAt = Date.parse(
       proposal.status === "needs_review" && proposal.review?.decision === "approved"
@@ -172,18 +181,38 @@ function appendReceipt(desk: Desk, r: Omit<DeskReceipt, "index" | "id" | "at" | 
   return receipt;
 }
 
+function expirePendingProposals(desk: Desk, now = new Date()) {
+  const cutoff = now.getTime() - PENDING_REVIEW_TTL_MS;
+  for (const proposal of desk.proposals) {
+    if (proposal.status !== "needs_review" || proposal.review || proposal.expiredAt) continue;
+    const createdAt = Date.parse(proposal.createdAt);
+    if (!Number.isFinite(createdAt) || createdAt > cutoff) continue;
+    proposal.expiredAt = now.toISOString();
+    const receipt = appendReceipt(desk, {
+      proposalId: proposal.id,
+      event: "review_expired",
+      outcome: "refused",
+      amount: proposal.amount,
+      recipient: proposal.recipient,
+      detail: "The 24-hour owner review window expired. This proposal can no longer be approved.",
+      policySnapshot: proposal.policySnapshot,
+    });
+    proposal.receiptIds.push(receipt.id);
+  }
+}
+
 export function publicDesk(desk: Desk) {
-  const { ownerKeyHash: _o, agentKeyHash: _a, anchors: _legacyAnchors, ...rest } = desk;
-  void _o; void _a; void _legacyAnchors;
+  const { ownerKeyHash: _o, agentKeyHash: _a, ownerSessions: _sessions, anchors: _legacyAnchors, ...rest } = desk;
+  void _o; void _a; void _sessions; void _legacyAnchors;
   const proposals = desk.proposals.map(({ settlement: _legacySettlement, ...proposal }) => {
     void _legacySettlement;
     return proposal;
   });
-  return { ...rest, proposals, demoReceipts: desk.demoReceipts ?? [], demoVerification: verifyDeskChain(desk.demoReceipts ?? []), storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review).length };
+  return { ...rest, proposals, demoReceipts: desk.demoReceipts ?? [], demoVerification: verifyDeskChain(desk.demoReceipts ?? []), storage: storageMode(), pending: desk.proposals.filter((p) => p.status === "needs_review" && !p.review && !p.expiredAt).length };
 }
 export function publicProposal(p: Proposal) {
-  const final = p.review ? (p.review.decision === "approved" ? "approved" : "refused") : p.status;
-  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, created_at: p.createdAt };
+  const final = p.expiredAt ? "expired" : p.review ? p.review.decision : p.status;
+  return { id: p.id, status: p.status, final_status: final, awaiting_review: p.status === "needs_review" && !p.review && !p.expiredAt, expired_at: p.expiredAt ?? null, amount: p.amount, recipient: p.recipient, reason: p.reason, reasons: p.reasons, checks: p.checks, policy_snapshot: p.policySnapshot ?? null, receipt_id: p.receiptIds[0], receipt_ids: p.receiptIds, review: p.review, created_at: p.createdAt };
 }
 
 export async function createDesk(name?: string) {
@@ -195,7 +224,7 @@ export async function createDesk(name?: string) {
   return { desk: publicDesk(desk), ownerKey, agentKey };
 }
 
-export async function getDesk(key: string | null) { const { desk } = await authed(key, "owner"); return publicDesk(desk); }
+export async function getDesk(key: string | null) { return mutate(key, "owner", (desk) => { expirePendingProposals(desk); return publicDesk(desk); }); }
 
 export async function updateRules(key: string | null, rules: unknown) {
   return mutate(key, "owner", (desk) => { desk.rules = cleanRules(rules); return desk; }).then(publicDesk);
@@ -213,7 +242,38 @@ export async function rotateOwnerKey(key: string | null) {
   return mutate(key, "owner", (desk) => {
     const ownerKey = `rd_owner_${desk.id}_${token()}`;
     desk.ownerKeyHash = sha(ownerKey);
+    // Credential rotation revokes every existing browser session. The caller must
+    // establish a fresh session with the returned owner key before continuing.
+    desk.ownerSessions = [];
     return { ownerKey };
+  });
+}
+
+const OWNER_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const OWNER_SESSION_LIMIT = 10;
+
+/** Issue a random, revocable browser session; only its SHA-256 hash is persisted. */
+export async function createOwnerSession(ownerKey: string) {
+  const sessionToken = await mutate(ownerKey, "owner", (desk) => {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + OWNER_SESSION_TTL_MS).toISOString();
+    desk.ownerSessions = (desk.ownerSessions ?? []).filter((session) => Date.parse(session.expiresAt) > now.getTime()).slice(-(OWNER_SESSION_LIMIT - 1));
+    const value = `rd_session_${desk.id}_${token()}`;
+    desk.ownerSessions.push({ tokenHash: sha(value), createdAt: now.toISOString(), expiresAt });
+    return value;
+  });
+  return sessionToken;
+}
+
+/** Revoke exactly the browser session presented by the caller. */
+export async function revokeOwnerSession(sessionToken: string | null) {
+  const parsed = parseKey(sessionToken);
+  if (parsed.role !== "session") return false;
+  return mutate(sessionToken, "owner", (desk) => {
+    const before = desk.ownerSessions?.length ?? 0;
+    const digest = sha(sessionToken!);
+    desk.ownerSessions = (desk.ownerSessions ?? []).filter((session) => !equalHash(session.tokenHash, digest));
+    return (desk.ownerSessions.length < before);
   });
 }
 
@@ -227,6 +287,7 @@ export async function propose(key: string | null, body: unknown) {
   if (!recipient) throw new DeskError("recipient (string) is required.", 400);
   if (b.amount === undefined || b.amount === null || Number.isNaN(amount)) throw new DeskError("amount (number) is required.", 400);
   return mutate(key, "any", (desk) => {
+    expirePendingProposals(desk);
     const { status: initialStatus, checks } = evaluate(amount, recipient, { ...DEFAULT_RULES, ...desk.rules });
     const committed = dailyCommittedSpend(desk);
     const dailyCap = desk.rules.dailySpendCap ?? DEFAULT_RULES.dailySpendCap;
@@ -246,18 +307,22 @@ export async function propose(key: string | null, body: unknown) {
 }
 
 export async function getProposal(key: string | null, id: string) {
-  const { desk } = await authed(key, "any");
-  const p = desk.proposals.find((x) => x.id === id);
-  if (!p) throw new DeskError("Proposal not found.", 404);
-  return publicProposal(p);
+  return mutate(key, "any", (desk) => {
+    expirePendingProposals(desk);
+    const p = desk.proposals.find((x) => x.id === id);
+    if (!p) throw new DeskError("Proposal not found.", 404);
+    return publicProposal(p);
+  });
 }
 
 export async function decide(key: string | null, id: string, decision: unknown, note?: unknown) {
   if (decision !== "approve" && decision !== "refuse") throw new DeskError('decision must be "approve" or "refuse".', 400);
   parseKey(key);
-  return mutate(key, "owner", (desk) => {
+  const result = await mutate(key, "owner", (desk) => {
+    expirePendingProposals(desk);
     const p = desk.proposals.find((x) => x.id === id);
     if (!p) throw new DeskError("Proposal not found.", 404);
+    if (p.expiredAt) return { expired: true as const };
     if (p.status !== "needs_review") throw new DeskError(`This proposal was ${p.status} by the rails; only proposals that need review can be decided.`, 409);
     if (p.review) throw new DeskError(`Already ${p.review.decision}.`, 409);
     // Re-check against the current rules: a payment blocked by today's rules cannot be approved.
@@ -271,8 +336,10 @@ export async function decide(key: string | null, id: string, decision: unknown, 
     p.review = { decision: decision === "approve" ? "approved" : "refused", at: new Date().toISOString(), note: typeof note === "string" ? note.slice(0, 200) : undefined, policySnapshot };
     const r = appendReceipt(desk, { proposalId: p.id, event: decision === "approve" ? "approved_by_owner" : "refused_by_owner", outcome: decision === "approve" ? "approved" : "refused", amount: p.amount, recipient: p.recipient, detail: decision === "approve" ? "Approved by you after review." : "Refused by you after review.", policySnapshot });
     p.receiptIds.push(r.id);
-    return publicProposal(p);
+    return { expired: false as const, proposal: publicProposal(p) };
   });
+  if (result.expired) throw new DeskError("The 24-hour owner review window expired. This proposal can no longer be approved.", 409);
+  return result.proposal;
 }
 
 
