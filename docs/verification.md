@@ -29,7 +29,17 @@ Preview deployment for application commit `a9d8dbfd54e3cf555c7ed04b2fd093261ae37
 - TypeScript completed successfully during the Next.js build.
 - Preview `GET /api/receipts` returned HTTP 200 with a valid empty history and `Cache-Control: no-store`.
 
-The full Vitest suite, standalone ESLint run, and npm audits are pending a GitHub Actions run on this branch. No Kane browser suite has been run; no paid credits have been used. No production deployment or merge has been authorized.
+Free GitHub Actions run [#45630348013](https://github.com/Bamioishim/rails-desk/actions/runs/45630348013) passed on branch commit `d7d77a711712b60723242f95e3f5073a5867857e`:
+- Vitest unit tests: passed.
+- TypeScript: passed.
+- ESLint: passed.
+- Production build: passed.
+- Full npm audit: zero vulnerabilities.
+- Production-only npm audit: zero vulnerabilities.
+- Vitest lockfile version: `4.1.12`.
+
+The run's `free-security-checks` artifact contains the generated report. The paid Kane browser suite was not invoked; it is not a pass and no paid credits were used. No production deployment or merge has been authorized.
+
 
 ## Automated checks
 
