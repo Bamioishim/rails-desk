@@ -1,13 +1,14 @@
 import { createOwnerSession, rotateOwnerKey } from "@/lib/server/desk";
 import { ownerCookie, ownerCredential } from "@/lib/server/session";
-import { fail, limit, ok, options } from "@/lib/server/http";
+import { fail, isSameOriginRequest, limit, ok, options } from "@/lib/server/http";
 
 export const OPTIONS = options;
 
 /** Owner only: rotate the owner credential and replace the current browser cookie. */
 export async function POST(request: Request) {
   try {
-    const limited = await limit(request, "key");
+    if (!isSameOriginRequest(request)) return Response.json({ error: "A same-origin request is required." }, { status: 403 });
+    const limited = await limit(request, "session");
     if (limited) return limited;
     const { ownerKey } = await rotateOwnerKey(ownerCredential(request));
     const sessionToken = await createOwnerSession(ownerKey);
