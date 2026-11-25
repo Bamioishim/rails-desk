@@ -65,6 +65,9 @@ export function useDesk(pollMs = 0) {
         }
       } else {
         const current = { deskId: stored.deskId, agentKey: stored.agentKey };
+        // Upgrade a raw owner-key cookie left by an older app version before it can be
+        // copied or logged out without server-side revocation.
+        try { await api("/api/v1/session"); } catch { /* refresh below surfaces auth or storage errors */ }
         if (live) { setKeys(current); await refresh(current); }
       }
       if (live) setReady(true);
