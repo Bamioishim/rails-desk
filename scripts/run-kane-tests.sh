@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the committed Kane browser tests against BASE_URL.
-# Requires a pre-authenticated Kane CLI profile; secrets are never passed via argv.
+# Credentials are supplied by the CI environment from masked GitHub Actions secrets.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,14 +16,10 @@ if ! command -v kane-cli >/dev/null 2>&1; then
   exit 1
 fi
 
-# Fail closed: Kane CLI 0.10.6 documents Basic Auth only through
-# --username/--access-key flags. Those expose secrets in process arguments,
-# so this script must not pass LT_ACCESS_KEY that way. Require a profile
-# authenticated interactively on this machine/runner instead.
-if ! kane-cli whoami >/dev/null 2>&1; then
-  echo "Kane CLI is not authenticated for this environment." >&2
-  echo "Authenticate with 'kane-cli login' in a trusted interactive terminal, then rerun." >&2
-  echo "This script intentionally does not pass credentials as command-line arguments." >&2
+# Kane CLI 0.10.6 CI authentication: pass masked repository secrets to the
+# documented Basic Auth flags. GitHub masks secret values in Actions logs.
+if [[ -z "${LT_USERNAME:-}" || -z "${LT_ACCESS_KEY:-}" ]]; then
+  echo "LT_USERNAME and LT_ACCESS_KEY must be configured as GitHub Actions secrets." >&2
   exit 1
 fi
 
@@ -61,4 +57,6 @@ kane-cli testrun run tests/kane/*_test.md \
   --agent \
   --on-failure continue \
   --parallel 1 \
+  --username "$LT_USERNAME" \
+  --access-key "$LT_ACCESS_KEY" \
   --name "${KANE_RUN_NAME:-Rails Desk Kane browser tests}"
