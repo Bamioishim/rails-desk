@@ -40,7 +40,7 @@ Production Redis smoke workflow [#45526309628](https://github.com/Bamioishim/rai
 - Proposal status remained `needs_review`.
 - No owner approval or funds movement occurred.
 
-This smoke test creates an isolated synthetic desk and pending proposal in production Redis. It therefore does write test data; the run above completed successfully. The workflow is now path-filtered to application and dependency changes so documentation-only pushes do not create additional production test records.
+This smoke test creates an isolated synthetic desk and pending proposal in production Redis and leaves that synthetic record there; no existing user desk is changed. It therefore does write test data; the run above completed successfully. The workflow is now path-filtered to application and dependency changes so documentation-only pushes do not create additional production test records.
 
 ## Production checks not performed
 
