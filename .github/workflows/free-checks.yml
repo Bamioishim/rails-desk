@@ -2,7 +2,7 @@ name: Free checks (no Kane)
 
 on:
   push:
-    branches: [testnet-settlement-rpc-fix, fix/rolling-daily-cap-owner-security]
+    branches: [testnet-settlement-rpc-fix, fix/rolling-daily-cap-owner-security, chore/retire-xlayer-integrations]
     paths-ignore:
       - ".github/workflows/free-checks.yml"
   workflow_dispatch:
@@ -73,7 +73,7 @@ jobs:
             '',
             ...(findings.length ? findings : ['- None']),
             '',
-            'The owner-signed X Layer testnet transaction and end-to-end settlement verification were not run by this workflow.',
+            'Rails Desk records policy decisions only; it does not execute blockchain payments.',
             'The paid Kane browser suite was not invoked.',
             '',
           ];

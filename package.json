@@ -10,7 +10,6 @@
     "test": "vitest run",
     "receipts:verify": "node scripts/receipts.mjs verify",
     "receipts:append": "node scripts/receipts.mjs append",
-    "circuit": "node scripts/policy-circuit.mjs",
     "typecheck": "tsc --noEmit",
     "test:kane": "bash scripts/run-kane-tests.sh",
     "kane:gate": "node scripts/kane-gate.mjs",
@@ -22,8 +21,7 @@
   "dependencies": {
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "viem": "^2.58.2"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
