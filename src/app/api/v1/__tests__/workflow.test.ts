@@ -135,6 +135,6 @@ describe("Rails Desk API approval flow", () => {
     expect(deskResponse.status).toBe(200);
     const desk = await deskResponse.json();
     expect(desk.receipts.map((receipt: { outcome: string }) => receipt.outcome)).toEqual(["needs_review", "approved"]);
-    expect(desk.verification).toMatchObject({ valid: true, count: 2 });
+    expect(desk.verification).toMatchObject({ valid: true, brokenAt: null });
   });
 });
