@@ -112,7 +112,7 @@ The paid Kane gate is separate and manual. Run it only with explicit owner appro
 
 ## Pending-review expiry and concurrent budget checks
 
-Security hardening PR [#11](https://github.com/Bamioishim/rails-desk/pull/11) was tested on branch `security-expiry-budget-guards` in free CI run [#45693392180](https://github.com/Bamioishim/rails-desk/actions/runs/45693392180) on 25 November 2026.
+Security hardening PR [#11](https://github.com/Bamioishim/rails-desk/pull/11) was tested on branch `security-expiry-budget-guards` in free CI run [#45693981552](https://github.com/Bamioishim/rails-desk/actions/runs/45693981552) on 25 November 2026.
 
 - Unit tests passed, including the new 24-hour pending-review expiry test.
 - Expired proposals receive a `review_expired` receipt, are removed from the pending queue, release their budget reservation, and cannot be approved afterward.
