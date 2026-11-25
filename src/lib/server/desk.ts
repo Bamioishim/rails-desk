@@ -62,7 +62,7 @@ async function load(deskId: string): Promise<{ desk: Desk; rev: string }> {
 }
 async function authed(key: string | null, need: "owner" | "agent" | "any") {
   const k = parseKey(key);
-  if (need === "owner" && k.role === "agent") throw new DeskError("This action needs the owner credential, not the agent key.", 403);
+  if (need === "owner" && k.role === "agent") throw new DeskError("This action needs the owner key or owner session, not the agent key.", 403);
   const { desk, rev } = await load(k.deskId);
   const candidateHash = sha(k.key);
   const ok = k.role === "owner"
