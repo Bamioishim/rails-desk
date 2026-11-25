@@ -32,7 +32,7 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 
 ## Current verification
 
-- **API write Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI on 25 November 2026: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). No Kane tests were run. Vercel Preview was blocked by the account build-rate limit.
+- **API write Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI on 25 November 2026: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). No Kane tests were run. A Vercel Preview deployment reached READY, but Vercel Deployment Protection redirected anonymous smoke checks to its login page.
 
 **Latest merged security checks: PASS**
 
@@ -46,7 +46,7 @@ The Kane suite covers the documented agent-review, mock approval/execution, bloc
 
 **Pending security follow-up**
 
-- **Write-route Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). This follow-up is ready for review, not merged. Vercel Preview is blocked by the account deployment quota; the existing security Preview above remains the latest available preview.
+- **Write-route Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). This follow-up is open for review, not merged. Its Vercel Preview deployment is READY but protected by Vercel login, so anonymous app-route verification remains pending.
 
 See [full verification notes and direct test evidence](docs/verification.md) before treating these checks as proof of production payment execution.
 
