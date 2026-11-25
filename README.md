@@ -32,6 +32,8 @@ An approved proposal is not a payment. Rails Desk does not connect to wallets or
 
 ## Current verification
 
+- **API write Origin guard:** [PR #18](https://github.com/Bamioishim/rails-desk/pull/18) passed free CI on 25 November 2026: 57/57 tests, TypeScript, ESLint, dependency audits, and production build in [run #45701404553](https://github.com/Bamioishim/rails-desk/actions/runs/45701404553). No Kane tests were run. Vercel Preview was blocked by the account build-rate limit.
+
 **Latest merged security checks: PASS**
 
 - **Kane browser acceptance:** 5/5 passed on 25 November 2026. [Workflow run #105](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) · [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703) · [Checked-in per-test evidence](docs/kane-evidence/08-current-main-run-2026-11-25.md).
