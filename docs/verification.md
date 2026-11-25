@@ -112,12 +112,14 @@ The paid Kane gate is separate and manual. Run it only with explicit owner appro
 
 ## Pending-review expiry and concurrent budget checks
 
-Security hardening PR [#11](https://github.com/Bamioishim/rails-desk/pull/11) was tested on branch `security-expiry-budget-guards` in free CI run [#45694367748](https://github.com/Bamioishim/rails-desk/actions/runs/45694367748) on 25 November 2026.
+Phase 3 security hardening is consolidated in draft [PR #15](https://github.com/Bamioishim/rails-desk/pull/15), based on current `main` and tested on branch `security/phase3-hardening` in free CI run [#45699881523](https://github.com/Bamioishim/rails-desk/actions/runs/45699881523) on 25 November 2026.
 
-- Unit tests passed, including the new 24-hour pending-review expiry test.
-- Expired proposals receive a `review_expired` receipt, are removed from the pending queue, release their budget reservation, and cannot be approved afterward.
-- Concurrent submissions across three simulated server instances were tested against a daily spend cap; only the two proposals within the cap were accepted.
-- Existing cross-instance receipt-chain and concurrent owner-decision tests passed.
-- TypeScript, ESLint, and production build passed.
+- Unit tests passed, including 24-hour pending-review expiry and server-side session revocation.
+- Expired proposals receive a `review_expired` receipt, leave the pending queue, release their budget reservation, and cannot be approved afterward.
+- Concurrent submissions across three simulated server instances were tested against a daily spend cap; only proposals within the cap were accepted.
+- Cross-instance receipt-chain integrity and concurrent owner-decision tests passed.
+- Session exchange, logout, and owner-key rotation require explicit same-origin Origin validation and have a dedicated per-IP rate limit.
+- All other write routes reject untrusted browser Origin headers while preserving server-to-server agent requests and configured CORS origins.
+- TypeScript, ESLint, production build, and both dependency audit steps passed.
 
-The branch remains in an open pull request and has not been merged or deployed. This is automated test evidence, not production runtime verification.
+The PR remains a draft and has not been merged or deployed. Vercel Preview did not create a deployment for this branch because the account's build-rate limit was reached; the GitHub production build passed. This is automated test evidence, not production runtime verification.
