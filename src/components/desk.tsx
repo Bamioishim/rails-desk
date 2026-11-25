@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export type DeskRules = { allowedRecipients: string[]; maxPerAction: number; reviewLimit: number; dailySpendCap: number };
 export type DeskPolicySnapshot = { rules: DeskRules; checks: { rule: string; passed: boolean; detail: string }[] };
-export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked"; reasons: string[]; policy_snapshot?: DeskPolicySnapshot | null; review: null | { decision: "approved" | "refused"; at: string; policySnapshot?: DeskPolicySnapshot }; receiptIds: string[] };
+export type DeskProposal = { id: string; createdAt: string; amount: number; recipient: string; reason: string; agent: string; status: "approved" | "needs_review" | "blocked"; reasons: string[]; policy_snapshot?: DeskPolicySnapshot | null; review: null | { decision: "approved" | "refused"; at: string; policySnapshot?: DeskPolicySnapshot }; receiptIds: string[]; expiredAt?: string };
 export type DeskReceipt = { index: number; id: string; at: string; proposalId: string; event: string; source?: "app" | "demo"; outcome: "approved" | "needs_review" | "blocked" | "refused"; amount: number; recipient: string; detail: string; policySnapshot?: DeskPolicySnapshot; previousHash: string; hash: string };
 export type DeskState = { id: string; name: string; rules: DeskRules; proposals: DeskProposal[]; receipts: DeskReceipt[]; demoReceipts?: DeskReceipt[]; demoVerification?: { valid: boolean; brokenAt: number | null }; storage: "redis" | "file" | "ephemeral"; pending: number; agentKeyHint: string; verification: { valid: boolean; brokenAt: number | null } };
 type Keys = { deskId: string; agentKey: string; ownerKey?: string };
@@ -65,6 +65,9 @@ export function useDesk(pollMs = 0) {
         }
       } else {
         const current = { deskId: stored.deskId, agentKey: stored.agentKey };
+        // Upgrade a raw owner-key cookie left by an older app version before it can be
+        // copied or logged out without server-side revocation.
+        try { await api("/api/v1/session"); } catch { /* refresh below surfaces auth or storage errors */ }
         if (live) { setKeys(current); await refresh(current); }
       }
       if (live) setReady(true);
