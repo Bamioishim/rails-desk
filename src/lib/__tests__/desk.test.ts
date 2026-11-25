@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { createDesk, decide, evaluate, getDesk, getProposal, propose, rotateAgentKey, rotateOwnerKey, updateRules, verifyDeskChain, recordDemoEvent, DEFAULT_RULES } from "../server/desk";
+import { createDesk, createOwnerSession, decide, evaluate, getDesk, getProposal, propose, revokeOwnerSession, rotateAgentKey, rotateOwnerKey, rotateOwnerSession, updateRules, verifyDeskChain, recordDemoEvent, DEFAULT_RULES } from "../server/desk";
 
 beforeAll(() => { process.env.RAILS_DESK_DATA_DIR = mkdtempSync(path.join(tmpdir(), "desk-test-")); delete process.env.KV_REST_API_URL; delete process.env.UPSTASH_REDIS_REST_URL; });
 
@@ -143,6 +143,34 @@ describe("desk API flow", () => {
     }
   });
 
+  it("expires pending proposals after 24 hours and rejects late approval", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-23T10:00:00.000Z"));
+      const { ownerKey, agentKey } = await createDesk("Pending proposal expiry");
+      await updateRules(ownerKey, { allowedRecipients: ["Jordan"], maxPerAction: 100, reviewLimit: 10, dailySpendCap: 25 });
+      const pending = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Needs owner review" });
+      expect(pending.status).toBe("needs_review");
+
+      vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1);
+      await expect(decide(ownerKey, pending.id, "approve")).rejects.toThrow(/expired and can no longer be approved/);
+
+      const state = await getDesk(ownerKey);
+      const expired = state.proposals.find((proposal) => proposal.id === pending.id);
+      expect(expired?.status).toBe("expired");
+      expect(expired?.review?.decision).toBe("expired");
+      expect(state.receipts.at(-1)?.event).toBe("expired_by_system");
+      expect(state.receipts.at(-1)?.outcome).toBe("expired");
+      expect(verifyDeskChain(state.receipts).valid).toBe(true);
+
+      // Expiry releases the old pending reservation so a fresh proposal can use the cap.
+      const replacement = await propose(agentKey, { amount: 15, recipient: "Jordan", reason: "Fresh proposal" });
+      expect(replacement.status).toBe("needs_review");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps pending budget reserved until the owner decides, even after 24 hours", async () => {
     vi.useFakeTimers();
     try {
@@ -159,6 +187,25 @@ describe("desk API flow", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("rotates and revokes browser sessions without rotating the owner integration key", async () => {
+    const { ownerKey, ownerSession, desk } = await createDesk("Revocable sessions");
+    expect((await getDesk(ownerSession)).id).toBe(desk.id);
+
+    const { sessionKey: migrated } = await createOwnerSession(ownerKey);
+    expect((await getDesk(migrated)).id).toBe(desk.id);
+
+    const { sessionKey: replacement } = await rotateOwnerSession(migrated);
+    await expect(getDesk(migrated)).rejects.toThrow(/Invalid or expired owner session/);
+    expect((await getDesk(replacement)).id).toBe(desk.id);
+
+    await revokeOwnerSession(replacement);
+    await expect(getDesk(replacement)).rejects.toThrow(/Invalid or expired owner session/);
+    // A browser logout does not invalidate the separately-held owner integration key.
+    expect((await getDesk(ownerKey)).id).toBe(desk.id);
+    const publicState = await getDesk(ownerKey);
+    expect(publicState).not.toHaveProperty("ownerSessions");
   });
 
   it("rotates the owner key and invalidates the previous credential", async () => {
