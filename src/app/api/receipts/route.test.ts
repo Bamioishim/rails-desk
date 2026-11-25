@@ -2,11 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { GET, POST } from "./route";
+import { appendFileReceipt } from "../../../lib/file-receipts.mjs";
 
-const execFileAsync = promisify(execFile);
 const rails = { spendingCap: 20, allowedRecipients: ["Alex", "Jordan", "Sam"] };
 let tempDir = "";
 let previousPath: string | undefined;
@@ -23,74 +21,53 @@ afterEach(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-function request(body: unknown) {
-  return new Request("http://localhost/api/receipts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+describe("legacy receipt API is read-only", () => {
+  it("returns an empty verified history when no file exists", async () => {
+    const response = await GET();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    await expect(response.json()).resolves.toMatchObject({
+      receipts: [],
+      verification: { valid: true, brokenAt: null, count: 0 },
+    });
   });
-}
 
-describe("receipt API uses the same append-only file verifier", () => {
-  it("writes an approved mock decision and GET reads the verified file chain", async () => {
-    const response = await POST(request({
-      proposal: { amount: 10, recipient: "Alex", reason: "Local test approval" },
+  it("continues to return existing file-backed history and its verification", async () => {
+    const filePath = process.env.RAILS_DESK_RECEIPTS_FILE!;
+    const written = await appendFileReceipt({
+      amount: 10,
+      recipient: "Alex",
+      reason: "Historical demo fixture",
       decision: "approved",
-      decisionReason: "Approved after review.",
+      decisionReason: "Approved in the earlier demo flow.",
       rails,
-    }));
-    expect(response.status).toBe(201);
-    const written = await response.json();
-    expect(written.receipt).toMatchObject({ amount: 10, recipient: "Alex", decision: "approved", execution: "executed (mock)" });
+      filePath,
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const state = await response.json();
+    expect(state.receipts).toHaveLength(1);
+    expect(state.receipts[0]).toMatchObject({
+      hash: written.hash,
+      decision: "approved",
+      execution: "executed (mock)",
+    });
+    expect(state.verification).toMatchObject({ valid: true, count: 1 });
+  });
+
+  it("rejects POST with 405 and leaves the file-backed history unchanged", async () => {
+    const response = await POST();
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("GET");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    await expect(response.json()).resolves.toMatchObject({
+      error: "The legacy file-backed receipt endpoint is read-only.",
+    });
 
     const read = await GET();
     const state = await read.json();
-    expect(state.verification).toMatchObject({ valid: true, count: 1 });
-    expect(state.receipts).toHaveLength(1);
-    expect(state.receipts[0].hash).toBe(written.receipt.hash);
-    const cli = await execFileAsync(process.execPath, [path.resolve("scripts/receipts.mjs"), "verify", "--file", process.env.RAILS_DESK_RECEIPTS_FILE!]);
-    expect(cli.stdout.trim()).toBe("VALID · 1 entries");
-  });
-
-  it("enforces the cap and recipient allowlist on the server before mock execution", async () => {
-    for (const proposal of [
-      { amount: 21, recipient: "Alex", reason: "Over cap" },
-      { amount: 10, recipient: "Mallory", reason: "Unknown recipient" },
-    ]) {
-      const response = await POST(request({ proposal, decision: "approved", rails }));
-      expect(response.status).toBe(201);
-      const body = await response.json();
-      expect(body.receipt).toMatchObject({ decision: "refused", execution: "not executed" });
-    }
-    const state = await (await GET()).json();
-    expect(state.verification).toMatchObject({ valid: true, count: 2 });
-    expect(state.receipts.map((row: { decision: string }) => row.decision)).toEqual(["refused", "refused"]);
-  });
-
-  it("records an explicit user refusal in the same file chain", async () => {
-    const response = await POST(request({
-      proposal: { amount: 5, recipient: "Alex", reason: "Optional purchase" },
-      decision: "refused",
-      decisionReason: "User declined after review.",
-      rails,
-    }));
-    expect(response.status).toBe(201);
-    const body = await response.json();
-    expect(body.receipt).toMatchObject({ decision: "refused", decisionReason: "User declined after review.", execution: "not executed" });
-    const state = await (await GET()).json();
-    expect(state.verification).toMatchObject({ valid: true, count: 1 });
-    expect(state.receipts[0].hash).toBe(body.receipt.hash);
-  });
-
-  it("records cancellation before execution in the same verified chain", async () => {
-    const response = await POST(request({
-      proposal: { amount: 5, recipient: "Sam", reason: "Cancel test" },
-      decision: "cancelled",
-      decisionReason: "Cancelled before mock execution.",
-      rails,
-    }));
-    const body = await response.json();
-    expect(body.receipt).toMatchObject({ decision: "cancelled", execution: "not executed" });
-    expect(body.verification).toMatchObject({ valid: true, count: 1 });
+    expect(state.receipts).toEqual([]);
+    expect(state.verification).toMatchObject({ valid: true, count: 0 });
   });
 });
