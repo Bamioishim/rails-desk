@@ -9,7 +9,8 @@ import { useDesk } from "@/components/desk";
 const outcomeLabel = { approved: "approved", needs_review: "needs your OK", blocked: "blocked", refused: "refused" } as const;
 const outcomeTag = (o: keyof typeof outcomeLabel) => (o === "approved" ? "tag green" : o === "needs_review" ? "tag neutral" : "tag red");
 const outcomeSummary = (o: keyof typeof outcomeLabel, detail: string, reviewed = false) =>
-  reviewed && o === "approved" ? "Approved by you after review."
+  detail.toLowerCase().includes("review window expired") ? "Owner review window expired. This proposal can no longer be approved."
+    : reviewed && o === "approved" ? "Approved by you after review."
     : o === "approved" ? "Proposal approved by your rails."
     : o === "needs_review" ? "Proposal needs your approval."
     : o === "refused" ? "Proposal refused by you."
@@ -18,7 +19,7 @@ const outcomeSummary = (o: keyof typeof outcomeLabel, detail: string, reviewed =
       : "Proposal blocked by your allowed-recipient rules.";
 
 const isLegacyExternalRecord = (event: string) => event === "settled_on_xlayer_testnet";
-const eventLabel = (event: string) => event === "demo_activity" ? "Simulated outcome" : isLegacyExternalRecord(event) ? "Historical external record" : "Proposal decision";
+const eventLabel = (event: string) => event === "demo_activity" ? "Simulated outcome" : event === "review_expired" ? "Owner review expired" : isLegacyExternalRecord(event) ? "Historical external record" : "Proposal decision";
 
 export default function ReceiptsPage() {
   const { receipts, legacyReceipts, receiptStatus, receiptError, refreshReceipts } = useStore();
@@ -30,7 +31,7 @@ export default function ReceiptsPage() {
   const decisionReceipts = desk?.receipts.filter((receipt) => receipt.source !== "demo") ?? [];
   const demoActivity = [...(desk?.receipts.filter((receipt) => receipt.source === "demo") ?? []), ...(desk?.demoReceipts ?? [])]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  const pending = desk ? desk.proposals.filter((p) => p.status === "needs_review" && !p.review && !p.expired_at) : [];
+  const pending = desk ? desk.proposals.filter((p) => p.status === "needs_review" && !p.review && !p.expiredAt) : [];
   const act = async (id: string, decision: "approve" | "refuse") => {
     setBusy(id); setDeskErr(null);
     try { await d.decide(id, decision); setReviewing(null); }
@@ -81,7 +82,7 @@ export default function ReceiptsPage() {
       <div className="stat-grid">
         <div className="stat-card"><div className="stat-label">Needs your OK</div><div className="stat-value">{pending.length}</div><div className="stat-foot">Above your review limit of {desk.rules.reviewLimit}</div></div>
         <div className="stat-card"><div className="stat-label">Approved</div><div className="stat-value">{desk.proposals.filter((p) => p.status === "approved" || p.review?.decision === "approved").length}</div><div className="stat-foot">Policy approval only; no payment executed</div></div>
-        <div className="stat-card"><div className="stat-label">Blocked / refused</div><div className="stat-value">{desk.proposals.filter((p) => p.status === "blocked" || p.review?.decision === "refused").length}</div><div className="stat-foot">No payment executed</div></div>
+        <div className="stat-card"><div className="stat-label">Blocked / refused</div><div className="stat-value">{desk.proposals.filter((p) => p.status === "blocked" || p.review?.decision === "refused" || Boolean(p.expiredAt)).length}</div><div className="stat-foot">No payment executed</div></div>
       </div>
       <div className="panel" id="review">
         <div className="section-head"><div><h2 className="panel-title">Pending proposals</h2><div className="panel-desc">Proposals above your review limit stay pending until you approve or refuse them. No payment is sent.</div></div><span className={pending.length ? "tag neutral" : "tag"}>{pending.length} PENDING</span></div>
