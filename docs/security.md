@@ -28,9 +28,13 @@ Trusted server-side integrations can continue to send an owner bearer key explic
 - The receipt hash chain detects modification or broken links within the stored sequence. It is an application-level integrity check, not a public blockchain anchor or proof against a privileged server operator.
 - Historical external-settlement metadata, if present in an older stored desk, is kept opaque for compatibility. It is not returned by the current API, reverified, or actionable.
 
+## Production configuration follow-up
+
+Vercel's environment metadata currently reports a `readable-secret` security finding for the configured Upstash Redis token variable. The variable values were not decrypted, copied, or written to the repository. Before treating production secret handling as fully hardened, rotate the Upstash REST token and store the replacement using Vercel's sensitive/encrypted environment-variable setting for the required environments. This follow-up was not performed as part of the code retirement because it changes production credentials and could interrupt Redis access.
+
 ## Operational notes
 
-- Keep LT_USERNAME and LT_ACCESS_KEY in GitHub Actions secrets or a gitignored local `.env`. Never commit them.
+- Keep `LT_USERNAME` and `LT_ACCESS_KEY` in GitHub Actions secrets or a gitignored local `.env`. Never commit them.
 - Redis environment variables must be configured separately for each Vercel environment that needs durable storage.
-- The production persistence smoke test creates a synthetic proposal and verifies that its receipt survives independent API reads. It never approves the proposal or moves funds; it does write test data to production Redis, so obtain owner approval before running it.
+- The production persistence smoke test creates a synthetic desk and proposal. It changes production Redis data, so obtain explicit owner approval before running it.
 - Rails Desk does not connect wallets, sign transactions, broadcast transactions, or call blockchain RPC services.
