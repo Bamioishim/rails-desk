@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the committed Kane browser tests against BASE_URL.
-# Credentials come from the environment (or a gitignored .env). Never commit them.
+# Requires a pre-authenticated Kane CLI profile; secrets are never passed via argv.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
