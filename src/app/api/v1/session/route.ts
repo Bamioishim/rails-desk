@@ -1,4 +1,4 @@
-import { createOwnerSession, getDesk, revokeOwnerSession } from "@/lib/server/desk";
+import { createOwnerSession, DeskError, getDesk, revokeOwnerSession } from "@/lib/server/desk";
 import { ownerCredential, ownerCookie } from "@/lib/server/session";
 import { fail, isSameOriginRequest, limit, ok } from "@/lib/server/http";
 
@@ -33,7 +33,10 @@ export async function DELETE(request: Request) {
     const limited = await limit(request, "session");
     if (limited) return limited;
     const credential = ownerCredential(request);
-    if (credential?.startsWith("rd_session_")) await revokeOwnerSession(credential);
+    if (credential?.startsWith("rd_session_")) {
+      try { await revokeOwnerSession(credential); }
+      catch (error) { if (!(error instanceof DeskError) || error.status !== 401) throw error; }
+    }
     const response = ok({ authenticated: false }, 200, request);
     response.headers.append("Set-Cookie", ownerCookie("", 0));
     return response;
