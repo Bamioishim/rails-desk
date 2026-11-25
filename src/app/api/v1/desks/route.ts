@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const body = await json(request);
     const created = await createDesk(typeof body?.name === "string" ? body.name : undefined);
     const response = ok({ desk: created.desk, agentKey: created.agentKey }, 201, request);
-    response.headers.append("Set-Cookie", ownerCookie(created.ownerKey));
+    response.headers.append("Set-Cookie", ownerCookie(created.ownerSession));
     return response;
   } catch (e) { return fail(e, request); }
 }
