@@ -41,7 +41,7 @@ export function tooMany(r: LimitResult, request?: Request) {
 type Scope = "key" | "desk-create" | "session";
 /**
  * Rate-limit a write route. "key": per API key (60/min) plus a per-IP backstop (300/min).
- * "desk-create": per IP (20/hour). Returns a 429 Response when over, otherwise null.
+ * "desk-create": per IP (20/hour); "session": per IP (10/minute). Returns a 429 Response when over, otherwise null.
  */
 export async function limit(request: Request, scope: Scope): Promise<Response | null> {
   if (!rateLimitEnabled()) return null;
