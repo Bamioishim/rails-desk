@@ -8,7 +8,7 @@ export function ownerCookieCredential(request: Request): string | null {
 }
 
 export function ownerCredential(request: Request): string | null {
-  return ownerCookieCredential(request) ?? request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || null;
+  return ownerCookieCredential(request) ?? (request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || null);
 }
 
 export function ownerCookie(credential: string, maxAge = 60 * 60 * 24 * 30): string {
