@@ -38,20 +38,33 @@ export function tooMany(r: LimitResult, request?: Request) {
   );
 }
 
-type Scope = "key" | "desk-create";
+type Scope = "key" | "desk-create" | "session";
 /**
  * Rate-limit a write route. "key": per API key (60/min) plus a per-IP backstop (300/min).
- * "desk-create": per IP (20/hour). Returns a 429 Response when over, otherwise null.
+ * "desk-create": per IP (20/hour); "session": per IP (10/minute). Returns a 429 Response when over, otherwise null.
  */
 export async function limit(request: Request, scope: Scope): Promise<Response | null> {
+  const origin = request.headers.get("origin");
+  if (origin && !isSameOriginRequest(request) && !allowedOrigins().includes(origin)) {
+    throw new DeskError("Cross-origin write request blocked.", 403);
+  }
   if (!rateLimitEnabled()) return null;
   const ip = clientIp(request);
   const checks: [Limit, string][] = scope === "desk-create"
     ? [[LIMITS.desksPerIp(), ip]]
-    : [[LIMITS.perIp(), ip], [LIMITS.perKey(), request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || `anon:${ip}`]];
+    : scope === "session"
+      ? [[LIMITS.sessionPerIp(), ip]]
+      : [[LIMITS.perIp(), ip], [LIMITS.perKey(), request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || `anon:${ip}`]];
   for (const [l, id] of checks) {
     const r = await hit(l, id);
     if (!r.allowed) return tooMany(r, request);
   }
   return null;
+}
+
+/** Browser session mutations require an explicit same-origin Origin header. */
+export function isSameOriginRequest(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try { return new URL(origin).origin === new URL(request.url).origin; } catch { return false; }
 }
