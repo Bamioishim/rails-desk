@@ -30,7 +30,7 @@ export default function ReceiptsPage() {
   const decisionReceipts = desk?.receipts.filter((receipt) => receipt.source !== "demo") ?? [];
   const demoActivity = [...(desk?.receipts.filter((receipt) => receipt.source === "demo") ?? []), ...(desk?.demoReceipts ?? [])]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  const pending = desk ? desk.proposals.filter((p) => p.status === "needs_review" && !p.review && !p.expiredAt) : [];
+  const pending = desk ? desk.proposals.filter((p) => p.status === "needs_review" && !p.review && !p.expired_at) : [];
   const act = async (id: string, decision: "approve" | "refuse") => {
     setBusy(id); setDeskErr(null);
     try { await d.decide(id, decision); setReviewing(null); }
