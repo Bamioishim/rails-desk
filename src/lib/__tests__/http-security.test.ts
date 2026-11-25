@@ -28,6 +28,14 @@ describe("CORS", () => {
     expect(corsHeaders(req({ origin: "https://c.example" }))).toEqual({});
   });
 
+  it("rejects untrusted Origins on API writes while allowing same-origin and configured origins", async () => {
+    await expect(limit(req({ origin: "https://attacker.example" }), "key")).rejects.toThrow(/Cross-origin write request blocked/);
+    expect(await limit(req({ origin: "http://localhost" }), "key")).toBeNull();
+
+    process.env.RAILS_DESK_ALLOWED_ORIGINS = "https://trusted.example";
+    expect(await limit(req({ origin: "https://trusted.example" }), "key")).toBeNull();
+  });
+
   it("server-to-server calls (no Origin header) still get a normal response", async () => {
     const res = ok({ hello: 1 }, 201, req({ authorization: "Bearer x" }));
     expect(res.status).toBe(201);
