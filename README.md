@@ -16,6 +16,19 @@ Rails Desk is a policy and approval layer for AI-agent payment proposals. It che
 
 An approved proposal is not a payment. Rails Desk does not connect to wallets or execute transactions.
 
+## Current verification
+
+<badge>  </badge>
+**Latest main-branch checks: PASS**
+
+- **Kane browser acceptance:** 5/5 passed on 25 November 2026. [Workflow run #105](https://github.com/Bamioishim/rails-desk/actions/runs/45680518665) · [Kane report artifact](https://api.github.com/repos/Bamioishim/rails-desk/actions/artifacts/15054791703).
+- **Free CI:** dependency installation, full and production dependency audits, unit tests, TypeScript, ESLint, and production build passed in [run #45679177608](https://github.com/Bamioishim/rails-desk/actions/runs/45679177608).
+- **Production Redis smoke:** passed in [run #45526309628](https://github.com/Bamioishim/rails-desk/actions/runs/45526309628).
+
+The Kane suite covers the documented agent-review, mock approval/execution, blocked wording, demo walkthrough, and landing-page entry flows. It tests the mock/demo product, not live payment settlement. No funds move in Rails Desk. The current run artifact contains the Markdown report and direct per-test Kane links, but no separate screenshot bundle.
+
+See [full verification notes and direct test evidence](docs/verification.md) before treating these checks as proof of production payment execution.
+
 ## Quickstart
 
 Requires Node.js 20+.
