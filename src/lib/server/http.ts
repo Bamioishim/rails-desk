@@ -48,7 +48,9 @@ export async function limit(request: Request, scope: Scope): Promise<Response | 
   const ip = clientIp(request);
   const checks: [Limit, string][] = scope === "desk-create"
     ? [[LIMITS.desksPerIp(), ip]]
-    : [[LIMITS.perIp(), ip], [LIMITS.perKey(), request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || `anon:${ip}`]];
+    : scope === "session"
+      ? [[LIMITS.sessionPerIp(), ip]]
+      : [[LIMITS.perIp(), ip], [LIMITS.perKey(), request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim() || `anon:${ip}`]]
   for (const [l, id] of checks) {
     const r = await hit(l, id);
     if (!r.allowed) return tooMany(r, request);
